@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("Paw Whisker App Initialized");
 
     // Test API connection
+    /*
     fetch('/api/test-db')
         .then(response => response.json())
         .then(data => {
@@ -10,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(err => {
             console.error('Backend connection error:', err);
         });
+    */
 
     // Simple scroll effect for header
     const header = document.querySelector('.glass-header');
