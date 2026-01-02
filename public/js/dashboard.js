@@ -6,8 +6,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const userRes = await fetch('/api/me');
         if (userRes.ok) {
             const user = await userRes.json();
-            document.getElementById('user-name').textContent = user.username;
-            document.getElementById('user-role').textContent = user.role;
+            const userNameEl = document.getElementById('user-name');
+            const userRoleEl = document.getElementById('user-role');
+            if (userNameEl) userNameEl.textContent = user.username;
+            if (userRoleEl) userRoleEl.textContent = user.role;
 
             // Store username and update delete confirmation display
             currentUsername = user.username;
@@ -67,7 +69,8 @@ function setupNavigation() {
     window.switchSection = (sectionId) => {
         // Hide all sections first
         // Note: we need to wrap dashboard content in a section too
-        document.getElementById('dashboard-view').style.display = 'none';
+        const dashView = document.getElementById('dashboard-view');
+        if (dashView) dashView.style.display = 'none';
         document.querySelectorAll('.app-section').forEach(el => el.style.display = 'none');
 
         // Deactivate links
@@ -214,14 +217,20 @@ async function loadDashboardStats() {
     const statsRes = await fetch('/api/dashboard/stats');
     if (statsRes.ok) {
         const stats = await statsRes.json();
-        document.getElementById('total-patients').innerText = stats.totalPatients;
+        const totalPatientsEl = document.getElementById('total-patients');
+        if (totalPatientsEl) totalPatientsEl.innerText = stats.totalPatients;
 
         const lowStockEl = document.getElementById('low-stock');
-        lowStockEl.innerText = stats.lowStock;
-        if (stats.lowStock > 0) lowStockEl.style.color = '#ef4444';
+        if (lowStockEl) {
+            lowStockEl.innerText = stats.lowStock;
+            if (stats.lowStock > 0) lowStockEl.style.color = '#ef4444';
+        }
 
-        document.getElementById('revenue-today').innerText = formatCurrency(stats.revenueToday);
-        document.getElementById('active-staff').innerText = stats.activeStaff;
+        const revenueEl = document.getElementById('revenue-today');
+        if (revenueEl) revenueEl.innerText = formatCurrency(stats.revenueToday);
+
+        const activeStaffEl = document.getElementById('active-staff');
+        if (activeStaffEl) activeStaffEl.innerText = stats.activeStaff;
     }
     fetchQueue();
     fetchRecords();
@@ -233,6 +242,7 @@ async function fetchQueue() {
     if (res.ok) {
         const queue = await res.json();
         const tbody = document.getElementById('queue-body');
+        if (!tbody) return;
         tbody.innerHTML = '';
 
         if (queue.length === 0) {
@@ -304,7 +314,9 @@ async function fetchAnalytics() {
         const data = await res.json();
 
         // Sales Chart
-        const ctxSales = document.getElementById('salesChart').getContext('2d');
+        const salesCanvas = document.getElementById('salesChart');
+        if (!salesCanvas) return;
+        const ctxSales = salesCanvas.getContext('2d');
         // Destroy old if exists
         if (window.mySalesChart) window.mySalesChart.destroy();
 
@@ -333,23 +345,26 @@ async function fetchAnalytics() {
         });
 
         // Payment Methods Chart
-        const ctxPayment = document.getElementById('paymentChart').getContext('2d');
-        new Chart(ctxPayment, {
-            type: 'doughnut',
-            data: {
-                labels: data.paymentMethods.map(p => p.metode_bayar),
-                datasets: [{
-                    data: data.paymentMethods.map(p => p.count),
-                    backgroundColor: ['#8b5cf6', '#ec4899', '#06b6d4', '#f59e0b'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'right', labels: { color: '#94a3b8' } } }
-            }
-        });
+        const paymentCanvas = document.getElementById('paymentChart');
+        if (paymentCanvas) {
+            const ctxPayment = paymentCanvas.getContext('2d');
+            new Chart(ctxPayment, {
+                type: 'doughnut',
+                data: {
+                    labels: data.paymentMethods.map(p => p.metode_bayar),
+                    datasets: [{
+                        data: data.paymentMethods.map(p => p.count),
+                        backgroundColor: ['#8b5cf6', '#ec4899', '#06b6d4', '#f59e0b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { color: '#94a3b8' } } }
+                }
+            });
+        }
 
         // Best Selling Services List
         const servicesContainer = document.getElementById('best-services');

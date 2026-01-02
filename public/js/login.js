@@ -11,8 +11,10 @@ document.getElementById('loginForm').addEventListener('submit', async function (
     }
 
     try {
-        btn.textContent = 'Signing in...';
-        btn.disabled = true;
+        if (btn) {
+            btn.textContent = 'Signing in...';
+            btn.disabled = true;
+        }
 
         const response = await fetch('/api/login', {
             method: 'POST',
@@ -26,19 +28,21 @@ document.getElementById('loginForm').addEventListener('submit', async function (
 
         if (response.ok) {
             // Login success
-            // Store token if applicable, or just redirect
-            // localStorage.setItem('token', data.token);
-            window.location.href = '/dashboard'; // Redirect to dashboard or home
+            window.location.href = '/dashboard';
         } else {
             alert(data.message || 'Login failed');
-            btn.textContent = 'Sign In';
-            btn.disabled = false;
+            if (btn) {
+                btn.textContent = 'Sign In';
+                btn.disabled = false;
+            }
         }
     } catch (error) {
         console.error('Error:', error);
         alert('An error occurred. Please try again.');
-        btn.textContent = 'Sign In';
-        btn.disabled = false;
+        if (btn) {
+            btn.textContent = 'Sign In';
+            btn.disabled = false;
+        }
     }
 });
 

@@ -12,6 +12,12 @@ try {
     console.error("Database module error:", error);
 }
 
+// Fail fast if DB module isn't available - most routes require DB.
+if (!db) {
+    console.error('Database module not available. Exiting to avoid runtime errors in routes.');
+    process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 

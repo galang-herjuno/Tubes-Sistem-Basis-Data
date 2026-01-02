@@ -18,8 +18,10 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     }
 
     try {
-        btn.textContent = 'Creating account...';
-        btn.disabled = true;
+        if (btn) {
+            btn.textContent = 'Creating account...';
+            btn.disabled = true;
+        }
 
         const response = await fetch('/api/register', {
             method: 'POST',
@@ -33,17 +35,21 @@ document.getElementById('registerForm').addEventListener('submit', async functio
 
         if (response.ok) {
             alert('Account created successfully! Please login.');
-            window.location.href = '/login.html';
+            window.location.href = '/login';
         } else {
             alert(data.message || 'Registration failed');
-            btn.textContent = 'Sign Up';
-            btn.disabled = false;
+            if (btn) {
+                btn.textContent = 'Sign Up';
+                btn.disabled = false;
+            }
         }
     } catch (error) {
         console.error('Error:', error);
         alert('An error occurred. Please try again.');
-        btn.textContent = 'Sign Up';
-        btn.disabled = false;
+        if (btn) {
+            btn.textContent = 'Sign Up';
+            btn.disabled = false;
+        }
     }
 });
 

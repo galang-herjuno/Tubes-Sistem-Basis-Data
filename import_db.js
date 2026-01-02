@@ -8,6 +8,7 @@ async function importDatabase() {
         host: process.env.DB_HOST,
         user: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME || undefined,
         multipleStatements: true // Allow multiple statements
     };
 
@@ -23,12 +24,14 @@ async function importDatabase() {
 
         const sqlContent = fs.readFileSync(sqlPath, 'utf8');
 
-        if (!sqlContent) {
-            console.error('File database.sql is empty via fs.readFileSync!');
-            // Fallback: If file appears empty, use the hardcoded content from the prompt to recover
-            // This is a safety measure since previous view_file showed 0 bytes
-            throw new Error("database.sql is empty");
+        if (!sqlContent || sqlContent.trim().length === 0) {
+            console.error('File database.sql is empty via fs.readFileSync! Aborting import.');
+            return;
         }
+
+        // Try to detect a USE statement in the SQL file so we can switch DB if env not provided
+        const useMatch = sqlContent.match(/USE\s+`?([A-Za-z0-9_]+)`?;/i);
+        const detectedDb = useMatch ? useMatch[1] : null;
 
         console.log('Executing SQL script...');
         // Execute the entire script
@@ -38,10 +41,18 @@ async function importDatabase() {
         console.log('Database imported successfully from database.sql');
 
         // Add a test user if one doesn't exist (because the SQL file creates tables but maybe not data)
-        // We need to switch to the database first or rely on the USE statement in the file
-        await connection.changeUser({ database: 'Paw_Whisker' });
+        // Switch to the configured database name or the one detected in the SQL file
+        const targetDb = process.env.DB_NAME || detectedDb;
+        if (targetDb) {
+            await connection.changeUser({ database: targetDb });
+        } else {
+            console.warn('No target database name (env DB_NAME or USE statement) detected - skipping user seeding.');
+        }
 
-        const [users] = await connection.query('SELECT * FROM users WHERE username = ?', ['admin']);
+        let users = [];
+        if (targetDb) {
+            [users] = await connection.query('SELECT * FROM users WHERE username = ?', ['admin']);
+        }
         if (users.length === 0) {
             const bcrypt = require('bcryptjs');
             const hashedPassword = await bcrypt.hash('admin123', 10);
