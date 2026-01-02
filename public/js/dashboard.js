@@ -49,13 +49,15 @@ function updateUIBasedOnRole(role) {
     receptionElements.forEach(el => el.style.display = 'none');
 
     if (role === 'Admin') {
-        adminElements.forEach(el => el.style.display = 'block'); // List item
+        adminElements.forEach(el => el.style.display = 'block');
         doctorElements.forEach(el => el.style.display = 'block');
         receptionElements.forEach(el => el.style.display = 'block');
     } else if (role === 'Dokter') {
         doctorElements.forEach(el => el.style.display = 'block');
     } else if (role === 'Resepsionis') {
         receptionElements.forEach(el => el.style.display = 'block');
+    } else if (role === 'Pelanggan') {
+        // Limited view for Pelanggan
     }
 }
 
@@ -65,15 +67,9 @@ function setupNavigation() {
 
     // Helper to switch sections
     window.switchSection = (sectionId) => {
-        // Hide all sections first
-        // Note: we need to wrap dashboard content in a section too
         document.getElementById('dashboard-view').style.display = 'none';
         document.querySelectorAll('.app-section').forEach(el => el.style.display = 'none');
-
-        // Deactivate links
         links.forEach(l => l.classList.remove('active'));
-
-        // Show target
         const target = document.getElementById(sectionId);
         if (target) target.style.display = 'block';
     };
@@ -83,7 +79,6 @@ function setupNavigation() {
             e.preventDefault();
             const text = link.innerText.trim();
 
-            // Map text/icon to section ID
             if (text.includes('Dashboard')) {
                 window.switchSection('dashboard-view');
                 link.classList.add('active');
@@ -104,6 +99,10 @@ function setupNavigation() {
                 window.switchSection('transactions-view');
                 link.classList.add('active');
                 loadTransactions();
+            } else if (text.includes('Appointments')) {
+                window.switchSection('appointments-view');
+                link.classList.add('active');
+                loadAppointmentFormData();
             } else if (text.includes('Settings')) {
                 window.switchSection('settings-view');
                 link.classList.add('active');
@@ -131,7 +130,6 @@ function setupSettings() {
         });
     }
 
-    // Close on click outside
     window.addEventListener('click', (e) => {
         if (e.target === modal) {
             modal.classList.add('hidden');
@@ -156,7 +154,7 @@ function setupSettings() {
                 alert(data.message);
                 if (res.ok) {
                     e.target.reset();
-                    if (modal) modal.classList.add('hidden'); // Close modal on success
+                    if (modal) modal.classList.add('hidden');
                 }
             } catch (err) {
                 console.error(err);
@@ -170,9 +168,7 @@ function setupSettings() {
     const deleteInput = document.getElementById('deleteConfirmationInput');
 
     if (deleteInput && deleteBtn) {
-        // Validation listener
         deleteInput.addEventListener('input', (e) => {
-            // Get current username from the stored global or DOM
             const currentUsername = document.getElementById('user-name').textContent;
             const expectedPhrase = `delete my account ${currentUsername}`;
 
@@ -188,7 +184,6 @@ function setupSettings() {
         });
 
         deleteBtn.addEventListener('click', async () => {
-            // Second confirmation just to be safe
             if (confirm('Final check: This will permanently delete your account and all associated data. Proceed?')) {
                 try {
                     const res = await fetch('/api/users/delete', { method: 'DELETE' });
@@ -208,9 +203,7 @@ function setupSettings() {
 
 // --- DATA LOADERS ---
 
-
 async function loadDashboardStats() {
-    // Existing logic...
     const statsRes = await fetch('/api/dashboard/stats');
     if (statsRes.ok) {
         const stats = await statsRes.json();
@@ -218,7 +211,17 @@ async function loadDashboardStats() {
 
         const lowStockEl = document.getElementById('low-stock');
         lowStockEl.innerText = stats.lowStock;
-        if (stats.lowStock > 0) lowStockEl.style.color = '#ef4444';
+
+        // Visual Notification for Low Stock
+        const lowStockCard = lowStockEl.closest('.stat-card');
+        if (stats.lowStock > 0) {
+            lowStockEl.style.color = '#ef4444';
+            lowStockCard.style.border = '1px solid #ef4444';
+            lowStockCard.style.background = 'rgba(239, 68, 68, 0.1)';
+        } else {
+            lowStockCard.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+            lowStockCard.style.background = 'rgba(30, 41, 59, 0.7)';
+        }
 
         document.getElementById('revenue-today').innerText = formatCurrency(stats.revenueToday);
         document.getElementById('active-staff').innerText = stats.activeStaff;
@@ -267,7 +270,6 @@ async function updateStatus(id, newStatus) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id_daftar: id, status: newStatus })
         });
-        // Optional: show toast
     } catch (err) {
         console.error(err);
         alert('Failed to update status');
@@ -305,7 +307,6 @@ async function fetchAnalytics() {
 
         // Sales Chart
         const ctxSales = document.getElementById('salesChart').getContext('2d');
-        // Destroy old if exists
         if (window.mySalesChart) window.mySalesChart.destroy();
 
         window.mySalesChart = new Chart(ctxSales, {
@@ -324,7 +325,7 @@ async function fetchAnalytics() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } }, // Minimalist
+                plugins: { legend: { display: false } },
                 scales: {
                     y: { grid: { color: 'rgba(255,255,255,0.05)' } },
                     x: { grid: { display: false } }
@@ -396,25 +397,376 @@ async function loadPatients() {
     }
 }
 
+// --- Modal Helpers ---
+window.openModal = (id) => {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeModal = (id) => {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.add('hidden');
+};
+
+window.toggleSpesialisasi = (val) => {
+    const group = document.getElementById('spesialisasi-group');
+    if (group) {
+        group.style.display = (val === 'Dokter Hewan' || val === 'Groomer') ? 'block' : 'none';
+    }
+};
+
+// --- Staff Management Logic ---
+
+window.submitAddStaff = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    const btn = form.querySelector('button[type="submit"]');
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating...';
+
+        const res = await fetch('/api/staff', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+            alert(result.message);
+            closeModal('staffModal');
+            form.reset();
+            loadStaff();
+        } else {
+            alert(result.message || 'Failed to create staff');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error connecting to server');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Staff Account';
+    }
+};
+
+window.deleteStaff = async (id, name) => {
+    if (confirm(`Are you sure you want to delete ${name}? This will remove their user account and profile permanently.`)) {
+        try {
+            const res = await fetch(`/api/staff/${id}`, { method: 'DELETE' });
+            const result = await res.json();
+            alert(result.message);
+            if (res.ok) loadStaff();
+        } catch (err) {
+            console.error(err);
+            alert('Failed to delete staff');
+        }
+    }
+};
+
+window.submitAddItem = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    const btn = form.querySelector('button[type="submit"]');
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Adding...';
+
+        const res = await fetch('/api/inventory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+            alert(result.message);
+            closeModal('inventoryModal');
+            form.reset();
+            loadInventory(); // Refresh list
+        } else {
+            alert(result.message || 'Failed to add item');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error connecting to server');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Add Item';
+    }
+};
+
+// --- Modal Helpers ---
+window.openModal = (id) => {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeModal = (id) => {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.add('hidden');
+};
+
+window.toggleSpesialisasi = (val) => {
+    const group = document.getElementById('spesialisasi-group');
+    if (group) {
+        group.style.display = (val === 'Dokter Hewan' || val === 'Groomer') ? 'block' : 'none';
+    }
+};
+
+// --- Staff Management Logic ---
+
+window.submitAddStaff = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    const btn = form.querySelector('button[type="submit"]');
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating...';
+
+        const res = await fetch('/api/staff', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+            alert(result.message);
+            closeModal('staffModal');
+            form.reset();
+            loadStaff();
+        } else {
+            alert(result.message || 'Failed to create staff');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error connecting to server');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Staff Account';
+    }
+};
+
+window.deleteStaff = async (id, name) => {
+    if (confirm(`Are you sure you want to delete ${name}? This will remove their user account and profile permanently.`)) {
+        try {
+            const res = await fetch(`/api/staff/${id}`, { method: 'DELETE' });
+            const result = await res.json();
+            alert(result.message);
+            if (res.ok) loadStaff();
+        } catch (err) {
+            console.error(err);
+            alert('Failed to delete staff');
+        }
+    }
+};
+
+window.submitAddItem = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    const btn = form.querySelector('button[type="submit"]');
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Adding...';
+
+        const res = await fetch('/api/inventory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+            alert(result.message);
+            closeModal('inventoryModal');
+            form.reset();
+            loadInventory();
+        } else {
+            alert(result.message || 'Failed to add item');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error connecting to server');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Add Item';
+    }
+};
+
 async function loadStaff() {
     const res = await fetch('/api/staff');
     if (res.ok) {
         const staff = await res.json();
         const tbody = document.querySelector('#staff-view table tbody');
+        const emptyState = document.getElementById('staff-empty-state');
+        const tableContainer = document.querySelector('#staff-view .table-container table');
+
         if (!tbody) return;
         tbody.innerHTML = '';
+
+        if (staff.length === 0) {
+            if (emptyState) emptyState.style.display = 'block';
+            if (tableContainer) tableContainer.style.display = 'none';
+            return;
+        } else {
+            if (emptyState) emptyState.style.display = 'none';
+            if (tableContainer) tableContainer.style.display = 'table';
+        }
+
+        const isAdmin = document.getElementById('user-role').textContent === 'Admin';
+
+        const thead = document.querySelector('#staff-view table thead tr');
+        // Simple check to avoid duplicate headers
+        if (isAdmin && !thead.textContent.includes('Action')) {
+            const th = document.createElement('th');
+            th.textContent = 'Action';
+            thead.appendChild(th);
+        }
+
         staff.forEach(s => {
             const tr = document.createElement('tr');
+            let actionHtml = '';
+
+            if (isAdmin && s.id_user) {
+                // Actions: Edit Role & Delete
+                actionHtml = `
+                    <td style="display:flex; gap:0.5rem;">
+                        <button onclick="editUserRole(${s.id_user}, '${s.username}', '${s.account_role}')" 
+                                class="btn-xs" style="color:var(--accent-color); cursor:pointer;" title="Edit Role">
+                            <i class="fa-solid fa-user-pen"></i>
+                        </button>
+                        <button onclick="deleteStaff(${s.id_pegawai}, '${s.nama_lengkap}')" 
+                                class="btn-xs" style="color:var(--danger-color); cursor:pointer;" title="Delete Staff">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>`;
+            } else if (isAdmin) {
+                actionHtml = `<td><span style="color:#94a3b8">-</span></td>`;
+            }
+
             tr.innerHTML = `
                 <td>${s.nama_lengkap}</td>
                 <td>${s.jabatan}</td>
                 <td>${s.username || 'No Account'}</td>
                 <td>${s.spesialisasi || '-'}</td>
                 <td>${s.no_hp || '-'}</td>
+                ${actionHtml}
             `;
             tbody.appendChild(tr);
         });
     }
+}
+
+// Global function for Edit Role
+window.editUserRole = async (userId, username, currentRole) => {
+    const newRole = prompt(`Update role for ${username} (Admin/Dokter/Resepsionis/Pelanggan):`, currentRole);
+    if (newRole && newRole !== currentRole) {
+        try {
+            const res = await fetch(`/api/users/${userId}/role`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: newRole })
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (res.ok) loadStaff();
+        } catch (err) {
+            console.error(err);
+            alert('Failed to update role');
+        }
+    }
+};
+
+async function loadAppointmentFormData() {
+    const ownerRes = await fetch('/api/owners');
+    if (ownerRes.ok) {
+        const owners = await ownerRes.json();
+        const ownerSelect = document.getElementById('apt-owner');
+        ownerSelect.innerHTML = '<option value="">Select Owner</option>';
+        owners.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o.id_pemilik;
+            opt.textContent = `${o.nama_pemilik} (${o.no_hp})`;
+            ownerSelect.appendChild(opt);
+        });
+    }
+
+    const docRes = await fetch('/api/doctors');
+    if (docRes.ok) {
+        const docs = await docRes.json();
+        const docSelect = document.getElementById('apt-doctor');
+        docSelect.innerHTML = '<option value="">Select Doctor/Groomer</option>';
+        docs.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id_pegawai;
+            opt.textContent = d.nama_lengkap;
+            docSelect.appendChild(opt);
+        });
+    }
+
+    const ownerSelect = document.getElementById('apt-owner');
+    ownerSelect.onchange = async () => {
+        const ownerId = ownerSelect.value;
+        const petSelect = document.getElementById('apt-pet');
+        if (!ownerId) {
+            petSelect.disabled = true;
+            petSelect.innerHTML = '<option value="">Select Owner First</option>';
+            return;
+        }
+
+        const petRes = await fetch(`/api/owners/${ownerId}/pets`);
+        if (petRes.ok) {
+            const pets = await petRes.json();
+            petSelect.innerHTML = '<option value="">Select Pet</option>';
+            pets.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id_hewan;
+                opt.textContent = `${p.nama_hewan} (${p.jenis_hewan})`;
+                petSelect.appendChild(opt);
+            });
+            petSelect.disabled = false;
+        }
+    };
+
+    const form = document.getElementById('appointmentForm');
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const data = {
+            id_hewan: document.getElementById('apt-pet').value,
+            id_pegawai: document.getElementById('apt-doctor').value,
+            tgl_kunjungan: document.getElementById('apt-date').value,
+            keluhan: document.getElementById('apt-complaint').value
+        };
+
+        try {
+            const res = await fetch('/api/appointments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            alert(result.message);
+            if (res.ok) {
+                form.reset();
+                window.location.href = '/dashboard';
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to create appointment');
+        }
+    };
 }
 
 async function loadInventory() {
@@ -422,8 +774,20 @@ async function loadInventory() {
     if (res.ok) {
         const items = await res.json();
         const tbody = document.querySelector('#inventory-view table tbody');
+        const emptyState = document.getElementById('inventory-empty-state');
+        const tableContainer = document.querySelector('#inventory-view .table-container table');
+
         if (!tbody) return;
         tbody.innerHTML = '';
+
+        if (items.length === 0) {
+            if (emptyState) emptyState.style.display = 'block';
+            if (tableContainer) tableContainer.style.display = 'none';
+        } else {
+            if (emptyState) emptyState.style.display = 'none';
+            if (tableContainer) tableContainer.style.display = 'table';
+        }
+
         items.forEach(i => {
             const tr = document.createElement('tr');
             tr.innerHTML = `

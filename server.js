@@ -110,9 +110,11 @@ app.get('/auth/logout', (req, res) => {
 
 // Create Account (Register)
 app.post('/api/register', async (req, res) => {
-    const { username, password, role } = req.body;
+    // Default role is 'Pelanggan' for public registration
+    const { username, password } = req.body;
+    const role = 'Pelanggan';
 
-    if (!username || !password || !role) {
+    if (!username || !password) {
         return res.status(400).json({ message: 'All fields are required' });
     }
 
@@ -127,7 +129,6 @@ app.post('/api/register', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Insert user
         await db.query('INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
             [username, hashedPassword, role]);
 
@@ -191,6 +192,78 @@ app.delete('/api/users/delete', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error('Delete account error:', error);
         res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Update User Role (Admin Only)
+app.put('/api/users/:id/role', authMiddleware, async (req, res) => {
+    const { role } = req.body;
+    const targetUserId = req.params.id;
+
+    // Verify requester is Admin (Middleware checks login, but we need role check)
+    if (req.session.role !== 'Admin') {
+        return res.status(403).json({ message: 'Access denied: Admin only' });
+    }
+
+    // Validate role
+    const validRoles = ['Admin', 'Dokter', 'Resepsionis', 'Pelanggan'];
+    if (!validRoles.includes(role)) {
+        return res.status(400).json({ message: 'Invalid role' });
+    }
+
+    try {
+        await db.query('UPDATE users SET role = ? WHERE id_user = ?', [role, targetUserId]);
+        res.json({ message: 'User role updated successfully' });
+    } catch (error) {
+        console.error('Update role error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// --- APPOINTMENT SYSTEM API ---
+
+// Get Pets by Owner ID
+app.get('/api/owners/:id/pets', authMiddleware, async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM hewan WHERE id_pemilik = ?', [req.params.id]);
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch pets' });
+    }
+});
+
+// Get Doctors List
+app.get('/api/doctors', authMiddleware, async (req, res) => {
+    try {
+        // Fetch employees with 'Dokter Hewan' or 'Groomer' jabatan
+        const [rows] = await db.query("SELECT * FROM pegawai WHERE jabatan IN ('Dokter Hewan', 'Groomer')");
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch doctors' });
+    }
+});
+
+// Create Appointment (Pendaftaran)
+app.post('/api/appointments', authMiddleware, async (req, res) => {
+    const { id_hewan, id_pegawai, tgl_kunjungan, keluhan } = req.body;
+
+    if (!id_hewan || !id_pegawai || !tgl_kunjungan) {
+        return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    try {
+        // Status default 'Menunggu'
+        await db.query(`
+            INSERT INTO pendaftaran (id_hewan, id_pegawai, tgl_kunjungan, keluhan_awal, status) 
+            VALUES (?, ?, ?, ?, 'Menunggu')
+        `, [id_hewan, id_pegawai, tgl_kunjungan, keluhan]);
+
+        res.json({ message: 'Appointment created successfully' });
+    } catch (err) {
+        console.error('Create appointment error:', err);
+        res.status(500).json({ error: 'Failed to create appointment' });
     }
 });
 
@@ -353,7 +426,7 @@ app.post('/api/owners', authMiddleware, async (req, res) => {
 app.get('/api/staff', authMiddleware, async (req, res) => {
     try {
         const query = `
-            SELECT peg.*, u.username 
+            SELECT peg.*, u.username, u.role as account_role, u.id_user 
             FROM pegawai peg 
             LEFT JOIN users u ON peg.id_user = u.id_user
         `;
@@ -365,16 +438,84 @@ app.get('/api/staff', authMiddleware, async (req, res) => {
     }
 });
 
-// Create Staff
+// Create Staff (Transaction: Create User -> Create Employee)
 app.post('/api/staff', authMiddleware, async (req, res) => {
-    const { nama_lengkap, jabatan, no_hp, spesialisasi } = req.body;
+    // Only Admin can add staff
+    if (req.session.role !== 'Admin') {
+        return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { username, password, role, nama_lengkap, jabatan, spesialisasi, no_hp } = req.body;
+
+    // Validate role for staff
+    if (!['Dokter', 'Resepsionis', 'Admin'].includes(role)) {
+        return res.status(400).json({ message: 'Invalid role for staff' });
+    }
+
+    const connection = await db.getConnection();
     try {
-        await db.query('INSERT INTO pegawai (nama_lengkap, jabatan, no_hp, spesialisasi) VALUES (?, ?, ?, ?)',
-            [nama_lengkap, jabatan, no_hp, spesialisasi]);
-        res.json({ message: 'Staff added' });
+        await connection.beginTransaction();
+
+        // 1. Create User
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash(password, salt);
+        const [userResult] = await connection.query(
+            'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+            [username, hash, role]
+        );
+        const newUserId = userResult.insertId;
+
+        // 2. Create Employee Linked to User
+        await connection.query(
+            'INSERT INTO pegawai (id_user, nama_lengkap, jabatan, no_hp, spesialisasi) VALUES (?, ?, ?, ?, ?)',
+            [newUserId, nama_lengkap, jabatan, no_hp, spesialisasi]
+        );
+
+        await connection.commit();
+        res.json({ message: 'Staff created successfully' });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Failed to add staff' });
+        await connection.rollback();
+        console.error('Create staff transaction failed:', err);
+        res.status(500).json({ error: 'Failed to create staff' });
+    } finally {
+        connection.release();
+    }
+});
+
+// Delete Staff (Transaction: Delete User & Employee)
+app.delete('/api/staff/:id', authMiddleware, async (req, res) => {
+    if (req.session.role !== 'Admin') return res.status(403).json({ message: 'Access denied' });
+
+    const idPegawai = req.params.id;
+    const connection = await db.getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        // Get linked id_user first
+        const [rows] = await connection.query('SELECT id_user FROM pegawai WHERE id_pegawai = ?', [idPegawai]);
+        if (rows.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: 'Staff not found' });
+        }
+        const idUser = rows[0].id_user;
+
+        // Delete from pegawai first
+        await connection.query('DELETE FROM pegawai WHERE id_pegawai = ?', [idPegawai]);
+
+        // Delete from users if linked
+        if (idUser) {
+            await connection.query('DELETE FROM users WHERE id_user = ?', [idUser]);
+        }
+
+        await connection.commit();
+        res.json({ message: 'Staff and associated account deleted' });
+    } catch (err) {
+        await connection.rollback();
+        console.error('Delete staff error:', err);
+        res.status(500).json({ error: 'Failed to delete staff' });
+    } finally {
+        connection.release();
     }
 });
 
