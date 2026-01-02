@@ -261,13 +261,17 @@
                     <thead>
                         <tr>
                             <th>Owner Name</th>
+                            <th>Email</th>
                             <th>Phone</th>
                             <th>Pets</th>
-                            <th>Address</th>
                             <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody id="owners-table-body"></tbody>
+                    <tbody id="owners-table-body">
+                        <tr>
+                            <td colspan="5" style="text-align:center; color:#94a3b8; padding:2rem;">Loading...</td>
+                        </tr>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -589,6 +593,18 @@
         </div>
     </div>
 
+    <!-- Owner Details Modal -->
+    <div id="ownerDetailsModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 id="owner-details-title">Owner Details</h3>
+                <button class="close-modal" onclick="closeModal('ownerDetailsModal')">&times;</button>
+            </div>
+            <div id="owner-details-content" style="padding:1.5rem;">
+                <p style="text-align:center; color:#94a3b8">Loading...</p>
+            </div>
+        </div>
+    </div>
     <script src="js/dashboard.js"></script>
 </body>
 

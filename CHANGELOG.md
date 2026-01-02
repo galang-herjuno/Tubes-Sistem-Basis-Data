@@ -91,3 +91,141 @@ transaksi (transactions) → detail_transaksi (transaction details)
 - [ ] Add reporting and analytics features
 - [ ] Implement prescription management
 - [ ] Add services (layanan) management CRUD
+
+---
+
+## 2026-01-02 (Part 2) - Customer Portal Implementation
+
+### Database Schema Changes
+1. **Updated `pemilik` table**
+   - Added `id_user INT UNIQUE` column
+   - Added foreign key constraint to `users(id_user)`
+   - Enables linking customer accounts to owner profiles
+
+### Backend API Endpoints - Customer Portal
+
+#### Profile Management
+- `GET /api/customer/profile` - Get or auto-create customer profile
+- `PUT /api/customer/profile` - Update customer profile information
+
+#### Dashboard
+- `GET /api/customer/dashboard` - Get dashboard statistics (total pets, upcoming appointments, recent transactions)
+
+#### Pets Management
+- `GET /api/customer/pets` - Get all pets owned by customer
+- `POST /api/customer/pets` - Add new pet (auto-linked to customer's profile)
+- `GET /api/customer/pets/:id/medical-records` - Get complete medical history for a pet including prescriptions
+
+#### Appointments
+- `GET /api/customer/appointments` - Get all customer's appointments
+- `GET /api/customer/appointments/next` - Get next upcoming appointment
+
+#### Billing & Invoices
+- `GET /api/customer/transactions` - Get all customer's transactions with items summary
+- `GET /api/customer/transactions/:id` - Get detailed invoice with line items
+
+### Frontend - Customer Portal
+
+#### New Files Created
+- `customer-dashboard.html` - Complete customer portal interface
+- `customer-dashboard.js` - Full customer portal functionality
+
+#### Features Implemented
+
+**1. Dashboard (Overview)**
+- Pet cards showing owned pets with icons
+- Next appointment reminder with date, time, and doctor
+- Recent transactions summary
+- Quick stats: Total Pets, Upcoming Appointments, Recent Transactions
+
+**2. My Pets Section**
+- Grid view of all pets with detailed cards
+- Pet information: Name, Species, Breed, Gender, Age, Weight
+- "Add New Pet" functionality with modal form
+- "View Medical Records" button for each pet
+- Digital Health Card showing:
+  - Complete medical history
+  - Diagnosis and treatments
+  - Prescriptions with dosage instructions
+  - Doctor information
+  - Visit dates
+
+**3. Appointments Section**
+- Table view of all appointments (past and upcoming)
+- Shows: Date/Time, Pet, Doctor, Complaint, Status
+- Status badges for visual clarity
+
+**4. Billing & Invoices**
+- Complete transaction history
+- Invoice details with:
+  - Transaction ID and date
+  - Itemized list (services and products)
+  - Payment method
+  - Total amount
+- "View Invoice" modal for detailed breakdown
+- Quantity, unit price, and subtotals for each item
+
+**5. Profile Settings**
+- Update personal information:
+  - Full Name
+  - Email
+  - Phone Number
+  - Address
+- Form validation and success feedback
+
+### Routing & Access Control
+- Updated `/dashboard` route to check user role
+- Customers automatically redirected to `/customer-dashboard`
+- Staff (Admin, Dokter, Resepsionis) use standard dashboard
+- Role-based access control enforced on all endpoints
+
+### Security Features
+- All customer endpoints verify ownership before returning data
+- Customers can only view their own pets, appointments, and transactions
+- Profile auto-creation on first login for seamless onboarding
+- Session-based authentication required for all customer portal features
+
+### User Experience Enhancements
+- Automatic profile creation for new customers
+- Pet age calculation (years/months)
+- Currency formatting (IDR)
+- Date/time formatting (localized)
+- Empty states with helpful messages
+- Loading states for async operations
+- Modal dialogs for detailed views
+- Responsive card-based layouts
+- Icon-based visual indicators
+
+### Integration Points
+```
+Customer Account (users.role = 'Pelanggan')
+    ↓ (id_user)
+Owner Profile (pemilik)
+    ↓ (id_pemilik)
+Pets (hewan)
+    ↓ (id_hewan)
+Appointments (pendaftaran) → Medical Records (rekam_medis) → Prescriptions (resep_obat)
+    ↓ (id_daftar)
+Transactions (transaksi) → Transaction Details (detail_transaksi)
+```
+
+### Migration Script
+- `update_pemilik_schema.js` - Adds `id_user` column to existing `pemilik` table
+- Safe to run on existing databases (checks if column exists first)
+
+### Benefits for Customers
+✅ Complete pet health tracking
+✅ Easy appointment viewing
+✅ Transparent billing with detailed invoices
+✅ Self-service pet registration
+✅ Access to complete medical history
+✅ Profile management
+✅ No need to call clinic for basic information
+
+### Benefits for Clinic
+✅ Reduced receptionist workload
+✅ Better customer engagement
+✅ Digital record keeping
+✅ Improved customer satisfaction
+✅ Modern, professional image
+✅ Reduced phone inquiries
