@@ -18,7 +18,8 @@ async function seedUsers() {
         const users = [
             { username: 'admin', password: 'admin123', role: 'Admin' },
             { username: 'dokter', password: 'dokter123', role: 'Dokter' },
-            { username: 'resepsionis', password: 'resepsionis123', role: 'Resepsionis' }
+            { username: 'resepsionis', password: 'resepsionis123', role: 'Resepsionis' },
+            { username: 'pelangan', password: 'pelanggan123', role: 'Pelannggan'}
         ];
 
         for (const user of users) {

@@ -374,7 +374,7 @@ app.get('/api/dashboard/queue', authMiddleware, async (req, res) => {
     try {
         const query = `
             SELECT p.id_daftar, h.nama_hewan, peg.nama_lengkap as dokter, 
-                   DATE_FORMAT(p.tgl_kunjungan, '%H:%i') as jam, p.status 
+                DATE_FORMAT(p.tgl_kunjungan, '%H:%i') as jam, p.status 
             FROM pendaftaran p 
             JOIN hewan h ON p.id_hewan = h.id_hewan 
             JOIN pegawai peg ON p.id_pegawai = peg.id_pegawai 
@@ -974,8 +974,7 @@ app.get('/api/customer/transactions', authMiddleware, async (req, res) => {
 
         const [transactions] = await db.query(`
             SELECT t.*, 
-                   (SELECT GROUP_CONCAT(CONCAT(dt.qty, 'x ', 
-                        COALESCE(l.nama_layanan, b.nama_barang)) SEPARATOR ', ')
+                (SELECT GROUP_CONCAT(CONCAT(dt.qty, 'x ', COALESCE(l.nama_layanan, b.nama_barang)) SEPARATOR ', ')
                     FROM detail_transaksi dt
                     LEFT JOIN layanan l ON dt.id_layanan = l.id_layanan
                     LEFT JOIN barang b ON dt.id_barang = b.id_barang
@@ -1012,8 +1011,8 @@ app.get('/api/customer/transactions/:id', authMiddleware, async (req, res) => {
         // Get transaction details
         const [details] = await db.query(`
             SELECT dt.*, 
-                   l.nama_layanan,
-                   b.nama_barang, b.satuan
+                l.nama_layanan,
+                b.nama_barang, b.satuan
             FROM detail_transaksi dt
             LEFT JOIN layanan l ON dt.id_layanan = l.id_layanan
             LEFT JOIN barang b ON dt.id_barang = b.id_barang
