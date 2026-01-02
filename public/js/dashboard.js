@@ -381,19 +381,171 @@ async function loadPatients() {
         const tbody = document.querySelector('#patients-view table tbody');
         if (!tbody) return;
         tbody.innerHTML = '';
+
+        if (owners.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:2rem;">No owners registered yet</td></tr>';
+            return;
+        }
+
         owners.forEach(o => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${o.nama_pemilik}</td>
+                <td style="font-weight:500;">${o.nama_pemilik}</td>
+                <td>${o.email || '-'}</td>
                 <td>${o.no_hp || '-'}</td>
-                <td>${o.pet_count} Pets</td>
-                <td>${o.alamat || '-'}</td>
+                <td><span class="status-badge status-selesai">${o.pet_count} Pet${o.pet_count > 1 ? 's' : ''}</span></td>
                 <td>
-                    <button class="btn-xs" style="color:var(--primary-color)">View</button>
+                    <button class="btn-xs" onclick="viewOwnerDetails(${o.id_pemilik})" 
+                            style="color:var(--primary-color); cursor:pointer; padding:0.5rem 1rem; background:rgba(139, 92, 246, 0.1); border:1px solid var(--primary-color); border-radius:5px;">
+                        <i class="fa-solid fa-eye"></i> View
+                    </button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
+    }
+}
+
+// View Owner Details
+window.viewOwnerDetails = async (ownerId) => {
+    try {
+        openModal('ownerDetailsModal');
+        const content = document.getElementById('owner-details-content');
+        content.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</p>';
+
+        // Fetch owner details
+        const ownerRes = await fetch('/api/owners');
+        if (!ownerRes.ok) return;
+
+        const owners = await ownerRes.json();
+        const owner = owners.find(o => o.id_pemilik === ownerId);
+
+        if (!owner) {
+            content.innerHTML = '<p style="text-align:center; color:#ef4444;">Owner not found</p>';
+            return;
+        }
+
+        // Fetch owner's pets
+        const petsRes = await fetch(`/api/owners/${ownerId}/pets`);
+        const pets = petsRes.ok ? await petsRes.json() : [];
+
+        // Update modal title
+        document.getElementById('owner-details-title').textContent = `${owner.nama_pemilik}'s Profile`;
+
+        // Build content
+        content.innerHTML = `
+            <!-- Owner Information Card -->
+            <div style="background:linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%); 
+                        padding:2rem; border-radius:15px; border:1px solid rgba(139, 92, 246, 0.3); margin-bottom:2rem;">
+                <div style="display:grid; grid-template-columns: auto 1fr; gap:2rem; align-items:center;">
+                    <div style="width:100px; height:100px; background:linear-gradient(135deg, var(--primary-color), var(--accent-color)); 
+                                border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 30px rgba(139, 92, 246, 0.3);">
+                        <i class="fa-solid fa-user" style="font-size:3rem; color:white;"></i>
+                    </div>
+                    <div>
+                        <h2 style="margin:0 0 0.5rem 0; color:white; font-size:1.8rem;">${owner.nama_pemilik}</h2>
+                        <div style="display:grid; gap:0.5rem; margin-top:1rem;">
+                            <p style="margin:0; color:#e2e8f0; display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fa-solid fa-envelope" style="color:var(--accent-color); width:20px;"></i>
+                                <span>${owner.email || 'Not provided'}</span>
+                            </p>
+                            <p style="margin:0; color:#e2e8f0; display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fa-solid fa-phone" style="color:var(--accent-color); width:20px;"></i>
+                                <span>${owner.no_hp || 'Not provided'}</span>
+                            </p>
+                            <p style="margin:0; color:#e2e8f0; display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fa-solid fa-location-dot" style="color:var(--accent-color); width:20px;"></i>
+                                <span>${owner.alamat || 'Not provided'}</span>
+                            </p>
+                            <p style="margin:0; color:#e2e8f0; display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fa-solid fa-calendar" style="color:var(--accent-color); width:20px;"></i>
+                                <span>Member since ${new Date(owner.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pets Section -->
+            <div>
+                <h3 style="margin:0 0 1rem 0; color:white; display:flex; align-items:center; gap:0.5rem;">
+                    <i class="fa-solid fa-paw" style="color:var(--primary-color);"></i>
+                    Registered Pets (${pets.length})
+                </h3>
+                
+                ${pets.length === 0 ? `
+                    <div style="text-align:center; padding:3rem; background:rgba(255,255,255,0.03); border-radius:10px; border:1px dashed var(--glass-border);">
+                        <i class="fa-solid fa-paw" style="font-size:3rem; color:#94a3b8; opacity:0.3; margin-bottom:1rem;"></i>
+                        <p style="color:#94a3b8; margin:0;">No pets registered yet</p>
+                    </div>
+                ` : `
+                    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:1rem;">
+                        ${pets.map(pet => `
+                            <div style="background:rgba(255,255,255,0.05); padding:1.5rem; border-radius:12px; 
+                                        border:1px solid var(--glass-border); transition:all 0.3s ease;
+                                        hover:border-color:var(--primary-color); hover:transform:translateY(-2px);">
+                                <div style="text-align:center; margin-bottom:1rem;">
+                                    <div style="width:60px; height:60px; background:var(--primary-color); 
+                                                border-radius:50%; display:flex; align-items:center; justify-content:center; 
+                                                margin:0 auto; box-shadow:0 5px 15px rgba(139, 92, 246, 0.3);">
+                                        <i class="fa-solid fa-${pet.jenis_hewan === 'Kucing' ? 'cat' : pet.jenis_hewan === 'Anjing' ? 'dog' : 'paw'}" 
+                                           style="font-size:1.8rem; color:white;"></i>
+                                    </div>
+                                </div>
+                                <h4 style="text-align:center; margin:0 0 0.5rem 0; color:white; font-size:1.1rem;">${pet.nama_hewan}</h4>
+                                <p style="text-align:center; color:#94a3b8; margin:0 0 1rem 0; font-size:0.9rem;">
+                                    ${pet.jenis_hewan}${pet.ras ? ' • ' + pet.ras : ''}
+                                </p>
+                                <div style="padding-top:1rem; border-top:1px solid rgba(255,255,255,0.1);">
+                                    <p style="margin:0.25rem 0; color:#e2e8f0; font-size:0.85rem; display:flex; align-items:center; gap:0.5rem;">
+                                        <i class="fa-solid fa-venus-mars" style="color:var(--accent-color); width:16px;"></i>
+                                        ${pet.gender}
+                                    </p>
+                                    ${pet.tgl_lahir ? `
+                                        <p style="margin:0.25rem 0; color:#e2e8f0; font-size:0.85rem; display:flex; align-items:center; gap:0.5rem;">
+                                            <i class="fa-solid fa-cake-candles" style="color:var(--accent-color); width:16px;"></i>
+                                            ${calculatePetAge(pet.tgl_lahir)}
+                                        </p>
+                                    ` : ''}
+                                    ${pet.berat ? `
+                                        <p style="margin:0.25rem 0; color:#e2e8f0; font-size:0.85rem; display:flex; align-items:center; gap:0.5rem;">
+                                            <i class="fa-solid fa-weight-scale" style="color:var(--accent-color); width:16px;"></i>
+                                            ${pet.berat} kg
+                                        </p>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `}
+            </div>
+        `;
+
+    } catch (error) {
+        console.error('Error loading owner details:', error);
+        const content = document.getElementById('owner-details-content');
+        content.innerHTML = '<p style="text-align:center; color:#ef4444; padding:2rem;">Failed to load owner details</p>';
+    }
+};
+
+// Helper function to calculate pet age
+function calculatePetAge(birthDate) {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let years = today.getFullYear() - birth.getFullYear();
+    let months = today.getMonth() - birth.getMonth();
+
+    if (months < 0) {
+        years--;
+        months += 12;
+    }
+
+    if (years > 0) {
+        return `${years} year${years > 1 ? 's' : ''} old`;
+    } else if (months > 0) {
+        return `${months} month${months > 1 ? 's' : ''} old`;
+    } else {
+        return 'Less than a month old';
     }
 }
 

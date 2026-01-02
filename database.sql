@@ -32,13 +32,16 @@ CREATE TABLE users (
 );
 
 -- 3. Tabel Pemilik (Owner Hewan)
+-- Updated: 2026-01-02 - Added id_user to link with customer accounts
 CREATE TABLE pemilik (
     id_pemilik INT AUTO_INCREMENT PRIMARY KEY,
+    id_user INT UNIQUE, -- Link to users table (for Pelanggan role)
     nama_pemilik VARCHAR(100) NOT NULL,
     alamat VARCHAR(255),
     no_hp VARCHAR(20),
     email VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE SET NULL
 );
 
 -- 4. Tabel Hewan (Pet)
