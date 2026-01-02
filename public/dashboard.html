@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Paw Whisker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="brand">
+            <i class="fa-solid fa-paw" style="color:var(--primary-color)"></i> Paw <span>Whisker</span>
+        </div>
+
+        <ul class="menu">
+            <li><a href="#" class="active"><i class="fa-solid fa-grid-2"></i> Dashboard</a></li>
+
+            <!-- Visible to Admin & Receptionist -->
+            <li class="role-admin role-resepsionis"><a href="#"><i class="fa-solid fa-calendar-check"></i>
+                    Appointments</a></li>
+            <li class="role-admin role-resepsionis"><a href="#"><i class="fa-solid fa-users"></i> Patients & Owners</a>
+            </li>
+
+            <!-- Visible to Admin & Doctor -->
+            <li class="role-admin role-dokter"><a href="#"><i class="fa-solid fa-stethoscope"></i> Medical Records</a>
+            </li>
+
+            <!-- Visible to Admin -->
+            <li class="role-admin"><a href="#"><i class="fa-solid fa-user-doctor"></i> Staff Management</a></li>
+            <li class="role-admin"><a href="#"><i class="fa-solid fa-boxes-stacked"></i> Inventory</a></li>
+            <li class="role-admin role-resepsionis"><a href="#"><i class="fa-solid fa-cash-register"></i>
+                    Transactions</a></li>
+        </ul>
+
+        <div class="user-profile">
+            <div class="avatar">
+                <i class="fa-solid fa-user"></i>
+            </div>
+            <div class="user-info">
+                <h4 id="user-name">Loading...</h4>
+                <p id="user-role">...</p>
+                <a href="/auth/logout" class="logout-btn">Logout</a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="header">
+            <div>
+                <h2>Overview</h2>
+                <p class="date-display" id="current-date">Fetching date...</p>
+            </div>
+        </header>
+
+        <!-- DASHBOARD SECTION -->
+        <div id="dashboard-view" class="section-content">
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon icon-purple">
+                        <i class="fa-solid fa-cat"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="total-patients">0</h3>
+                        <p>Total Patients</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon icon-pink">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="revenue-today">Rp 0</h3>
+                        <p>Revenue Today</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon icon-blue">
+                        <i class="fa-solid fa-user-nurse"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="active-staff">0</h3>
+                        <p>Active Staff</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon icon-orange">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="low-stock">0</h3>
+                        <p>Low Stock Items</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Operational Section -->
+            <div class="dashboard-grid">
+                <!-- Left Column -->
+                <div class="left-col">
+                    <!-- Live Queue -->
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <div class="card-header">
+                            <h3>Live Queue</h3>
+                            <span class="status-badge status-diperiksa">Live</span>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Pet Name</th>
+                                    <th>Doctor/Groomer</th>
+                                    <th>Time</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="queue-body">
+                                <tr>
+                                    <td colspan="4" style="text-align:center; color:#94a3b8">No appointments today</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Sales Chart -->
+                    <div class="card role-admin role-resepsionis">
+                        <div class="card-header">
+                            <h3>Revenue (Last 7 Days)</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="salesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="right-col">
+                    <!-- Recent Medical Records -->
+                    <div class="card role-admin role-dokter" style="margin-bottom: 1.5rem;">
+                        <div class="card-header">
+                            <h3>Recent Records</h3>
+                        </div>
+                        <div class="record-list" id="recent-records">
+                            <p style="text-align:center; color:#94a3b8">Loading...</p>
+                        </div>
+                    </div>
+
+                    <!-- Payment Methods -->
+                    <div class="card role-admin role-resepsionis" style="margin-bottom: 1.5rem;">
+                        <div class="card-header">
+                            <h3>Payment Methods</h3>
+                        </div>
+                        <div class="chart-container" style="height: 200px;">
+                            <canvas id="paymentChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Best Services -->
+                    <div class="card role-admin role-resepsionis">
+                        <div class="card-header">
+                            <h3>Top Services</h3>
+                        </div>
+                        <div class="record-list" id="best-services">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW SECTIONS (Initially Hidden) -->
+
+        <!-- Patients View -->
+        <div id="patients-view" class="section-content app-section" style="display:none;">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Patients & Owners</h3>
+                    <button class="cta-button" style="font-size:0.8rem; padding:0.5rem 1rem;">+ Add New</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Owner Name</th>
+                            <th>Phone</th>
+                            <th>Pets</th>
+                            <th>Address</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Staff View -->
+        <div id="staff-view" class="section-content app-section" style="display:none;">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Staff Management</h3>
+                    <button class="cta-button" style="font-size:0.8rem; padding:0.5rem 1rem;">+ Add Staff</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Position</th>
+                            <th>Username</th>
+                            <th>Specialization</th>
+                            <th>Contact</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Inventory View -->
+        <div id="inventory-view" class="section-content app-section" style="display:none;">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Inventory Management</h3>
+                    <button class="cta-button" style="font-size:0.8rem; padding:0.5rem 1rem;">+ Add Item</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Category</th>
+                            <th>Stock</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Transactions View -->
+        <div id="transactions-view" class="section-content app-section" style="display:none;">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Recent Transactions</h3>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Date</th>
+                            <th>Owner</th>
+                            <th>Method</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="js/dashboard.js"></script>
+</body>
+
+</html>
