@@ -2,12 +2,11 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     e.preventDefault();
 
     const username = document.getElementById('username').value;
-    const role = document.getElementById('role').value;
     const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('confirmPassword').value;
     const btn = document.querySelector('.btn-login');
 
-    if (!username || !role || !password || !confirmPassword) {
+    if (!username || !password || !confirmPassword) {
         alert('Please fill in all fields');
         return;
     }
@@ -28,7 +27,7 @@ document.getElementById('registerForm').addEventListener('submit', async functio
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ username, password, role })
+            body: JSON.stringify({ username, password })
         });
 
         const data = await response.json();
