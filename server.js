@@ -267,6 +267,26 @@ app.post('/api/appointments', authMiddleware, async (req, res) => {
     }
 });
 
+// Get All Appointments
+app.get('/api/appointments', authMiddleware, async (req, res) => {
+    try {
+        const query = `
+            SELECT p.*, h.nama_hewan, h.jenis_hewan, peg.nama_lengkap as dokter, 
+                   pm.nama_pemilik, pm.no_hp
+            FROM pendaftaran p
+            JOIN hewan h ON p.id_hewan = h.id_hewan
+            JOIN pegawai peg ON p.id_pegawai = peg.id_pegawai
+            JOIN pemilik pm ON h.id_pemilik = pm.id_pemilik
+            ORDER BY p.tgl_kunjungan DESC
+        `;
+        const [rows] = await db.query(query);
+        res.json(rows);
+    } catch (err) {
+        console.error('Get appointments error:', err);
+        res.status(500).json({ error: 'Failed to fetch appointments' });
+    }
+});
+
 // --- DASHBOARD API ENDPOINTS ---
 
 
@@ -412,12 +432,94 @@ app.get('/api/owners', authMiddleware, async (req, res) => {
 app.post('/api/owners', authMiddleware, async (req, res) => {
     const { nama_pemilik, no_hp, alamat, email } = req.body;
     try {
-        await db.query('INSERT INTO pemilik (nama_pemilik, no_hp, alamat, email) VALUES (?, ?, ?, ?)',
+        const [result] = await db.query('INSERT INTO pemilik (nama_pemilik, no_hp, alamat, email) VALUES (?, ?, ?, ?)',
             [nama_pemilik, no_hp, alamat, email]);
-        res.json({ message: 'Owner added' });
+        res.json({ message: 'Owner added', id: result.insertId });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to add owner' });
+    }
+});
+
+// Update Owner
+app.put('/api/owners/:id', authMiddleware, async (req, res) => {
+    const { nama_pemilik, no_hp, alamat, email } = req.body;
+    try {
+        await db.query('UPDATE pemilik SET nama_pemilik = ?, no_hp = ?, alamat = ?, email = ? WHERE id_pemilik = ?',
+            [nama_pemilik, no_hp, alamat, email, req.params.id]);
+        res.json({ message: 'Owner updated' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to update owner' });
+    }
+});
+
+// Delete Owner
+app.delete('/api/owners/:id', authMiddleware, async (req, res) => {
+    try {
+        await db.query('DELETE FROM pemilik WHERE id_pemilik = ?', [req.params.id]);
+        res.json({ message: 'Owner deleted' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to delete owner' });
+    }
+});
+
+// Get All Pets
+app.get('/api/pets', authMiddleware, async (req, res) => {
+    try {
+        const query = `
+            SELECT h.*, p.nama_pemilik 
+            FROM hewan h 
+            JOIN pemilik p ON h.id_pemilik = p.id_pemilik 
+            ORDER BY h.id_hewan DESC
+        `;
+        const [rows] = await db.query(query);
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch pets' });
+    }
+});
+
+// Create Pet
+app.post('/api/pets', authMiddleware, async (req, res) => {
+    const { id_pemilik, nama_hewan, jenis_hewan, ras, gender, tgl_lahir, berat } = req.body;
+    try {
+        const [result] = await db.query(
+            'INSERT INTO hewan (id_pemilik, nama_hewan, jenis_hewan, ras, gender, tgl_lahir, berat) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [id_pemilik, nama_hewan, jenis_hewan, ras, gender, tgl_lahir, berat]
+        );
+        res.json({ message: 'Pet added', id: result.insertId });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to add pet' });
+    }
+});
+
+// Update Pet
+app.put('/api/pets/:id', authMiddleware, async (req, res) => {
+    const { nama_hewan, jenis_hewan, ras, gender, tgl_lahir, berat } = req.body;
+    try {
+        await db.query(
+            'UPDATE hewan SET nama_hewan = ?, jenis_hewan = ?, ras = ?, gender = ?, tgl_lahir = ?, berat = ? WHERE id_hewan = ?',
+            [nama_hewan, jenis_hewan, ras, gender, tgl_lahir, berat, req.params.id]
+        );
+        res.json({ message: 'Pet updated' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to update pet' });
+    }
+});
+
+// Delete Pet
+app.delete('/api/pets/:id', authMiddleware, async (req, res) => {
+    try {
+        await db.query('DELETE FROM hewan WHERE id_hewan = ?', [req.params.id]);
+        res.json({ message: 'Pet deleted' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to delete pet' });
     }
 });
 

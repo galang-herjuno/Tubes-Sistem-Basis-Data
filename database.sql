@@ -1,3 +1,19 @@
+-- ==========================================
+-- PAW WHISKER CLINIC MANAGEMENT SYSTEM
+-- Database Schema Definition
+-- ==========================================
+-- Last Updated: 2026-01-02
+-- 
+-- CHANGELOG:
+-- - 2026-01-02: Added 'Pelanggan' role to users table
+-- - Initial schema includes complete clinic management structure
+--
+-- STRUCTURE OVERVIEW:
+-- 1. Master Data: users, pemilik, hewan, pegawai, layanan, barang
+-- 2. Operations: pendaftaran, rekam_medis, resep_obat
+-- 3. Transactions: transaksi, detail_transaksi
+-- ==========================================
+
 CREATE DATABASE IF NOT EXISTS Paw_Whisker;
 USE Paw_Whisker;
 
@@ -6,6 +22,7 @@ USE Paw_Whisker;
 -- ==========================================
 
 -- 2. Tabel Users (Akun Login)
+-- Updated: 2026-01-02 - Added 'Pelanggan' role for public registration
 CREATE TABLE users (
     id_user INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,

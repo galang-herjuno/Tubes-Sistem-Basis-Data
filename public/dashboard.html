@@ -246,7 +246,16 @@
             <div class="card">
                 <div class="card-header">
                     <h3>Patients & Owners</h3>
-                    <button class="cta-button" style="font-size:0.8rem; padding:0.5rem 1rem;">+ Add New</button>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button class="cta-button" onclick="openModal('ownerModal')"
+                            style="font-size:0.8rem; padding:0.5rem 1rem;">
+                            <i class="fa-solid fa-user-plus"></i> Add Owner
+                        </button>
+                        <button class="cta-button" onclick="openModal('petModal')"
+                            style="font-size:0.8rem; padding:0.5rem 1rem; background:var(--secondary-color);">
+                            <i class="fa-solid fa-paw"></i> Add Pet
+                        </button>
+                    </div>
                 </div>
                 <table>
                     <thead>
@@ -258,7 +267,7 @@
                             <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody></tbody>
+                    <tbody id="owners-table-body"></tbody>
                 </table>
             </div>
         </div>
@@ -494,6 +503,88 @@
                         style="width:100%; padding: 0.8rem; border:1px solid var(--glass-border); border-radius:8px; background: rgba(255, 255, 255, 0.05); color: white;">
                 </div>
                 <button type="submit" class="cta-button" style="width:100%">Update Password</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Owner Modal -->
+    <div id="ownerModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Owner</h3>
+                <button class="close-modal" onclick="closeModal('ownerModal')">&times;</button>
+            </div>
+            <form id="addOwnerForm" onsubmit="submitAddOwner(event)">
+                <div class="input-group">
+                    <label>Owner Name</label>
+                    <input type="text" name="nama_pemilik" required>
+                </div>
+                <div class="input-group">
+                    <label>Phone Number</label>
+                    <input type="text" name="no_hp" required>
+                </div>
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" name="email">
+                </div>
+                <div class="input-group">
+                    <label>Address</label>
+                    <textarea name="alamat" rows="3"
+                        style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px;"></textarea>
+                </div>
+                <button type="submit" class="cta-button" style="width:100%; margin-top:1rem;">Add Owner</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Pet Modal -->
+    <div id="petModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Pet</h3>
+                <button class="close-modal" onclick="closeModal('petModal')">&times;</button>
+            </div>
+            <form id="addPetForm" onsubmit="submitAddPet(event)">
+                <div class="input-group">
+                    <label>Owner</label>
+                    <select name="id_pemilik" id="pet-owner-select" required class="status-select"
+                        style="width:100%; padding:0.8rem;">
+                        <option value="">Select Owner</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Pet Name</label>
+                    <input type="text" name="nama_hewan" required>
+                </div>
+                <div class="input-group">
+                    <label>Species</label>
+                    <select name="jenis_hewan" required class="status-select" style="width:100%; padding:0.8rem;">
+                        <option value="Kucing">Kucing</option>
+                        <option value="Anjing">Anjing</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Breed</label>
+                    <input type="text" name="ras" placeholder="e.g. Persian, Golden Retriever">
+                </div>
+                <div class="input-group">
+                    <label>Gender</label>
+                    <select name="gender" required class="status-select" style="width:100%; padding:0.8rem;">
+                        <option value="Jantan">Jantan</option>
+                        <option value="Betina">Betina</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Date of Birth</label>
+                    <input type="date" name="tgl_lahir"
+                        style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px;">
+                </div>
+                <div class="input-group">
+                    <label>Weight (kg)</label>
+                    <input type="number" step="0.01" name="berat" placeholder="e.g. 5.5">
+                </div>
+                <button type="submit" class="cta-button" style="width:100%; margin-top:1rem;">Add Pet</button>
             </form>
         </div>
     </div>

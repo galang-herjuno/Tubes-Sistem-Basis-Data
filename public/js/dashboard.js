@@ -797,12 +797,111 @@ async function loadInventory() {
                 <td>${formatCurrency(i.harga_satuan)} / ${i.satuan}</td>
                 <td>
                     ${i.stok < 5 ? '<span class="status-badge status-menunggu">Low Stock</span>' : '<span class="status-badge status-selesai">OK</span>'}
-                </td>
             `;
             tbody.appendChild(tr);
         });
     }
 }
+
+// --- Owner & Pet Management ---
+
+window.submitAddOwner = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    const btn = form.querySelector('button[type="submit"]');
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Adding...';
+
+        const res = await fetch('/api/owners', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+            alert('Owner added successfully!');
+            closeModal('ownerModal');
+            form.reset();
+            loadPatients(); // Refresh the patients list
+            loadOwnerDropdowns(); // Refresh dropdowns
+        } else {
+            alert(result.error || 'Failed to add owner');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error connecting to server');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Add Owner';
+    }
+};
+
+window.submitAddPet = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    const btn = form.querySelector('button[type="submit"]');
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Adding...';
+
+        const res = await fetch('/api/pets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+            alert('Pet added successfully!');
+            closeModal('petModal');
+            form.reset();
+            loadPatients(); // Refresh the patients list
+        } else {
+            alert(result.error || 'Failed to add pet');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error connecting to server');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Add Pet';
+    }
+};
+
+// Load owners into pet modal dropdown when modal opens
+async function loadOwnerDropdowns() {
+    const res = await fetch('/api/owners');
+    if (res.ok) {
+        const owners = await res.json();
+        const petOwnerSelect = document.getElementById('pet-owner-select');
+        if (petOwnerSelect) {
+            petOwnerSelect.innerHTML = '<option value="">Select Owner</option>';
+            owners.forEach(o => {
+                const opt = document.createElement('option');
+                opt.value = o.id_pemilik;
+                opt.textContent = `${o.nama_pemilik} (${o.no_hp || 'No phone'})`;
+                petOwnerSelect.appendChild(opt);
+            });
+        }
+    }
+}
+
+// Override openModal to load owners when opening pet modal
+const originalOpenModal = window.openModal;
+window.openModal = (id) => {
+    if (id === 'petModal') {
+        loadOwnerDropdowns();
+    }
+    originalOpenModal(id);
+};
 
 async function loadTransactions() {
     const res = await fetch('/api/transactions');
