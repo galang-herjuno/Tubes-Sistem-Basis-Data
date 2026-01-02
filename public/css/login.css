@@ -111,6 +111,46 @@ body {
     box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
 }
 
+select {
+    width: 100%;
+    padding: 12px 15px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 10px;
+    color: var(--text-main);
+    font-family: var(--font-family);
+    font-size: 1rem;
+    appearance: none;
+    /* simple arrow fix if needed, but keeping basic for now */
+}
+
+select option {
+    background-color: var(--bg-gradient-end);
+    /* Dark background for options */
+    color: var(--text-main);
+}
+
+.password-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    user-select: none;
+}
+
+.toggle-password:hover {
+    color: var(--primary-color);
+}
+
 .form-actions {
     display: flex;
     justify-content: flex-end;

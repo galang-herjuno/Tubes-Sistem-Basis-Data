@@ -31,6 +31,14 @@ app.use(session({
     }
 }));
 
+// Middleware to check authentication
+const authMiddleware = (req, res, next) => {
+    if (!req.session.userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+    }
+    next();
+};
+
 // Routes
 
 // Serve Login Page
@@ -98,15 +106,97 @@ app.get('/auth/logout', (req, res) => {
     });
 });
 
+// --- USER MANAGEMENT API ---
+
+// Create Account (Register)
+app.post('/api/register', async (req, res) => {
+    const { username, password, role } = req.body;
+
+    if (!username || !password || !role) {
+        return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    try {
+        // Check if user exists
+        const [existing] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
+        if (existing.length > 0) {
+            return res.status(400).json({ message: 'Username already exists' });
+        }
+
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Insert user
+        await db.query('INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+            [username, hashedPassword, role]);
+
+        res.json({ message: 'Account created successfully' });
+    } catch (error) {
+        console.error('Register error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Update Password
+app.post('/api/users/change-password', authMiddleware, async (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.session.userId;
+
+    if (!oldPassword || !newPassword) {
+        return res.status(400).json({ message: 'Please provide old and new password' });
+    }
+
+    try {
+        const [rows] = await db.query('SELECT * FROM users WHERE id_user = ?', [userId]);
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const user = rows[0];
+
+        // Verify old password
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Incorrect old password' });
+        }
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        await db.query('UPDATE users SET password = ? WHERE id_user = ?', [hashedPassword, userId]);
+
+        res.json({ message: 'Password updated successfully' });
+    } catch (error) {
+        console.error('Change password error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Delete Account
+app.delete('/api/users/delete', authMiddleware, async (req, res) => {
+    const userId = req.session.userId;
+
+    try {
+        await db.query('DELETE FROM users WHERE id_user = ?', [userId]);
+
+        // Destroy session
+        req.session.destroy(err => {
+            if (err) {
+                console.error('Session destroy error:', err);
+            }
+            res.clearCookie('connect.sid');
+            res.json({ message: 'Account deleted successfully' });
+        });
+    } catch (error) {
+        console.error('Delete account error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
 // --- DASHBOARD API ENDPOINTS ---
 
-// Middleware to check authentication
-const authMiddleware = (req, res, next) => {
-    if (!req.session.userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
-    }
-    next();
-};
+
 
 // Get Current User Info
 app.get('/api/me', authMiddleware, (req, res) => {

@@ -39,6 +39,7 @@
             <li class="role-admin"><a href="#"><i class="fa-solid fa-boxes-stacked"></i> Inventory</a></li>
             <li class="role-admin role-resepsionis"><a href="#"><i class="fa-solid fa-cash-register"></i>
                     Transactions</a></li>
+            <li><a href="#" id="nav-settings"><i class="fa-solid fa-gear"></i> Settings</a></li>
         </ul>
 
         <div class="user-profile">
@@ -269,7 +270,61 @@
             </div>
         </div>
 
+        <!-- Settings View -->
+        <div id="settings-view" class="section-content app-section" style="display:none;">
+            <div class="card" style="max-width: 600px; margin: 0 auto;">
+                <div class="card-header">
+                    <h3>Account Settings</h3>
+                </div>
+
+                <div style="margin-bottom: 2rem;">
+                    <h4 style="margin-bottom: 1rem;">Change Password</h4>
+                    <p style="margin-bottom: 1rem; color: #94a3b8; font-size: 0.9rem;">To secure your account, regular
+                        password updates are recommended.</p>
+                    <button id="openChangePassModalBtn" class="cta-button" style="width: 100%;">Change Password</button>
+                </div>
+
+                <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 2rem;">
+                    <h4 style="margin-bottom: 1rem; color: #ef4444;">Danger Zone</h4>
+                    <p style="margin-bottom: 1rem; color: #94a3b8;">To delete your account, type <strong>delete my
+                            account <span id="confirm-username-display"></span></strong> below:</p>
+                    <div style="margin-bottom: 1rem;">
+                        <input type="text" id="deleteConfirmationInput" placeholder="Type the confirmation phrase"
+                            style="width:100%; padding: 0.8rem; border:1px solid #ef4444; border-radius:8px; background: rgba(239, 68, 68, 0.05); color: #ef4444; margin-bottom: 0.5rem;">
+                        <small style="color: #94a3b8; display: block;">Make sure the text matches exactly to enable the
+                            button.</small>
+                    </div>
+                    <button id="deleteAccountBtn" disabled
+                        style="background: #ef4444; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 600; opacity: 0.5; cursor: not-allowed;">Delete
+                        Account</button>
+                </div>
+            </div>
+        </div>
+
     </main>
+
+    <!-- Change Password Modal -->
+    <div id="passwordModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Change Password</h3>
+                <button id="closePasswordModal" class="close-modal">&times;</button>
+            </div>
+            <form id="changePasswordForm">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display:block; margin-bottom:0.5rem; color:var(--text-muted)">Old Password</label>
+                    <input type="password" id="oldPassword" required
+                        style="width:100%; padding: 0.8rem; border:1px solid var(--glass-border); border-radius:8px; background: rgba(255, 255, 255, 0.05); color: white;">
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display:block; margin-bottom:0.5rem; color:var(--text-muted)">New Password</label>
+                    <input type="password" id="newPassword" required
+                        style="width:100%; padding: 0.8rem; border:1px solid var(--glass-border); border-radius:8px; background: rgba(255, 255, 255, 0.05); color: white;">
+                </div>
+                <button type="submit" class="cta-button" style="width:100%">Update Password</button>
+            </form>
+        </div>
+    </div>
 
     <script src="js/dashboard.js"></script>
 </body>

@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    let currentUsername = '';
+
     // 1. Fetch User Info & Stats
     try {
         const userRes = await fetch('/api/me');
@@ -6,6 +8,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const user = await userRes.json();
             document.getElementById('user-name').textContent = user.username;
             document.getElementById('user-role').textContent = user.role;
+
+            // Store username and update delete confirmation display
+            currentUsername = user.username;
+            const confirmDisplay = document.getElementById('confirm-username-display');
+            if (confirmDisplay) confirmDisplay.textContent = currentUsername;
+
             updateUIBasedOnRole(user.role);
         }
 
@@ -14,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 2. Setup Navigation
         setupNavigation();
+        setupSettings();
 
     } catch (error) {
         console.error('Error initializing dashboard:', error);
@@ -95,12 +104,110 @@ function setupNavigation() {
                 window.switchSection('transactions-view');
                 link.classList.add('active');
                 loadTransactions();
+            } else if (text.includes('Settings')) {
+                window.switchSection('settings-view');
+                link.classList.add('active');
             }
         });
     });
 }
 
+function setupSettings() {
+    // Change Password Modal Logic
+    const openModalBtn = document.getElementById('openChangePassModalBtn');
+    const closeModalBtn = document.getElementById('closePasswordModal');
+    const modal = document.getElementById('passwordModal');
+    const changePassForm = document.getElementById('changePasswordForm');
+
+    if (openModalBtn && modal) {
+        openModalBtn.addEventListener('click', () => {
+            modal.classList.remove('hidden');
+        });
+    }
+
+    if (closeModalBtn && modal) {
+        closeModalBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+    }
+
+    // Close on click outside
+    window.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+        }
+    });
+
+    if (changePassForm) {
+        changePassForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const oldPassword = document.getElementById('oldPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+
+            if (!oldPassword || !newPassword) return;
+
+            try {
+                const res = await fetch('/api/users/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ oldPassword, newPassword })
+                });
+                const data = await res.json();
+                alert(data.message);
+                if (res.ok) {
+                    e.target.reset();
+                    if (modal) modal.classList.add('hidden'); // Close modal on success
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Failed to change password');
+            }
+        });
+    }
+
+    // Delete Account
+    const deleteBtn = document.getElementById('deleteAccountBtn');
+    const deleteInput = document.getElementById('deleteConfirmationInput');
+
+    if (deleteInput && deleteBtn) {
+        // Validation listener
+        deleteInput.addEventListener('input', (e) => {
+            // Get current username from the stored global or DOM
+            const currentUsername = document.getElementById('user-name').textContent;
+            const expectedPhrase = `delete my account ${currentUsername}`;
+
+            if (e.target.value === expectedPhrase) {
+                deleteBtn.disabled = false;
+                deleteBtn.style.opacity = '1';
+                deleteBtn.style.cursor = 'pointer';
+            } else {
+                deleteBtn.disabled = true;
+                deleteBtn.style.opacity = '0.5';
+                deleteBtn.style.cursor = 'not-allowed';
+            }
+        });
+
+        deleteBtn.addEventListener('click', async () => {
+            // Second confirmation just to be safe
+            if (confirm('Final check: This will permanently delete your account and all associated data. Proceed?')) {
+                try {
+                    const res = await fetch('/api/users/delete', { method: 'DELETE' });
+                    const data = await res.json();
+                    alert(data.message);
+                    if (res.ok) {
+                        window.location.href = '/login';
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to delete account');
+                }
+            }
+        });
+    }
+}
+
 // --- DATA LOADERS ---
+
 
 async function loadDashboardStats() {
     // Existing logic...

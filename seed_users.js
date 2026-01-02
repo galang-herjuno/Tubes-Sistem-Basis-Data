@@ -16,6 +16,7 @@ async function seedUsers() {
         connection = await mysql.createConnection(config);
 
         const users = [
+            { username: 'admin', password: 'admin123', role: 'Admin' },
             { username: 'dokter', password: 'dokter123', role: 'Dokter' },
             { username: 'resepsionis', password: 'resepsionis123', role: 'Resepsionis' }
         ];

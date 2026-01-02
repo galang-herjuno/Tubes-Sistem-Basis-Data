@@ -10,3 +10,12 @@ Cara Run Project
 2. Install depedencies dengan perintah "npm install" (Hanya Sekali)
 3. Run project dengan perintah "npm run dev"
 4. Akses project di "http://localhost:3000"
+
+Password untuk role:
+1. admin > admin123
+2. dokter > dokter123
+3. resepsionis > resepsionis123
+
+
+untuk seeding user (kalo udah diacak2) perlu ketik:
+1. node seed_users.js
