@@ -1287,9 +1287,8 @@ window.generateBill = async (appointmentId, petName) => {
 
         const result = await res.json();
         if (res.ok) {
-            alert(`✅ Transaction generated successfully!\n\nTotal: Rp ${result.total_biaya.toLocaleString('id-ID')}\nTransaction ID: ${result.id_transaksi}`);
-            // Assuming fetchQueue is defined elsewhere to refresh the queue display
-            // fetchQueue(); 
+            // Show beautiful success modal instead of alert
+            showBillSuccessModal(result.total_biaya, result.id_transaksi, petName);
             loadTransactions(); // Refresh transactions if visible
         } else {
             alert('❌ Error: ' + result.message);
@@ -1299,6 +1298,63 @@ window.generateBill = async (appointmentId, petName) => {
         alert('❌ Failed to generate bill');
     }
 };
+
+// Show Bill Success Modal
+function showBillSuccessModal(totalBiaya, transactionId, petName) {
+    const modalHTML = `
+        <div style="background:rgba(30, 41, 59, 0.95); backdrop-filter:blur(10px); border:1px solid rgba(245, 158, 11, 0.3); border-radius:12px; padding:2rem; max-width:500px; margin:2rem auto; box-shadow:0 20px 60px rgba(0,0,0,0.5); text-align:center;">
+            <div style="width:80px; height:80px; background:#f59e0b; border-radius:50%; margin:0 auto 1.5rem; display:flex; align-items:center; justify-content:center; animation:scaleIn 0.3s ease;">
+                <i class="fa-solid fa-check" style="font-size:2.5rem; color:#1e293b;"></i>
+            </div>
+            
+            <h2 style="color:#f59e0b; margin:0 0 0.5rem 0; font-size:1.5rem;">
+                Transaction Generated!
+            </h2>
+            
+            <p style="color:#94a3b8; margin:0 0 1.5rem 0;">
+                Bill for <strong style="color:white;">${petName}</strong> has been created successfully
+            </p>
+            
+            <div style="background:rgba(255,255,255,0.05); border-radius:8px; padding:1.5rem; margin-bottom:1.5rem;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <span style="color:#94a3b8;">Transaction ID:</span>
+                    <span style="color:white; font-weight:600;">#${transactionId}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#94a3b8; font-size:1.1rem;">Total Amount:</span>
+                    <span style="color:#f59e0b; font-weight:700; font-size:1.5rem;">Rp ${totalBiaya.toLocaleString('id-ID')}</span>
+                </div>
+            </div>
+            
+            <button onclick="closeBillSuccessModal()" style="width:100%; background:#f59e0b; color:#1e293b; border:none; padding:0.75rem; border-radius:6px; cursor:pointer; font-weight:600; font-size:1rem; transition:all 0.3s;" onmouseover="this.style.background='#d97706'" onmouseout="this.style.background='#f59e0b'">
+                <i class="fa-solid fa-check"></i> Done
+            </button>
+        </div>
+    `;
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.id = 'bill-success-modal';
+    modalOverlay.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9999; display:flex; align-items:center; justify-content:center; padding:1rem; animation:fadeIn 0.3s ease;';
+    modalOverlay.innerHTML = modalHTML;
+
+    modalOverlay.onclick = (e) => {
+        if (e.target === modalOverlay) {
+            closeBillSuccessModal();
+        }
+    };
+
+    document.body.appendChild(modalOverlay);
+}
+
+// Close Bill Success Modal
+window.closeBillSuccessModal = () => {
+    const modal = document.getElementById('bill-success-modal');
+    if (modal) {
+        modal.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => modal.remove(), 300);
+    }
+};
+
 
 // ========================================
 // END BILLING SYSTEM
@@ -1362,6 +1418,12 @@ window.viewTransactionDetails = async (txId) => {
         if (res.ok) {
             const { transaction, details } = await res.json();
 
+            // Calculate subtotal
+            let calculatedSubtotal = 0;
+            details.forEach(d => {
+                calculatedSubtotal += parseFloat(d.subtotal);
+            });
+
             let detailsHtml = `
                 <div style="background:rgba(30, 41, 59, 0.95); backdrop-filter:blur(10px); border:1px solid rgba(245, 158, 11, 0.3); border-radius:12px; padding:2rem; max-width:600px; margin:2rem auto; box-shadow:0 20px 60px rgba(0,0,0,0.5);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; border-bottom:2px solid #f59e0b; padding-bottom:1rem;">
@@ -1420,8 +1482,24 @@ window.viewTransactionDetails = async (txId) => {
                         </table>
                     </div>
                     
+                    <!-- Calculation Summary -->
+                    <div style="background:rgba(255,255,255,0.03); border-radius:8px; padding:1rem; margin-bottom:1rem;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem; color:white;">
+                            <span>Subtotal:</span>
+                            <span style="font-weight:600;">${formatCurrency(calculatedSubtotal)}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem; color:#94a3b8;">
+                            <span>Discount:</span>
+                            <span>- ${formatCurrency(transaction.diskon || 0)}</span>
+                        </div>
+                        <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:0.5rem; margin-top:0.5rem; display:flex; justify-content:space-between; color:white; font-size:1.1rem;">
+                            <span style="font-weight:600;">Grand Total:</span>
+                            <span style="font-weight:700; color:#f59e0b;">${formatCurrency(transaction.total_biaya)}</span>
+                        </div>
+                    </div>
+                    
                     <div style="background:#f59e0b; color:#1e293b; padding:1rem; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-weight:700; font-size:1.1rem;">TOTAL</span>
+                        <span style="font-weight:700; font-size:1.1rem;">TOTAL PAID</span>
                         <span style="font-weight:700; font-size:1.3rem;">${formatCurrency(transaction.total_biaya)}</span>
                     </div>
                     
