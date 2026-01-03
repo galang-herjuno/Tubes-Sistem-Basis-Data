@@ -904,20 +904,23 @@ async function loadStaff() {
             const tr = document.createElement('tr');
             let actionHtml = '';
 
-            if (isAdmin && s.id_user) {
-                // Actions: Edit Role & Delete
+            if (isAdmin) {
+                // Actions: Edit Details & Delete
+                // Encoded JSON to safely pass object data
+                const staffData = encodeURIComponent(JSON.stringify(s));
+
                 actionHtml = `
-                    <td style="display:flex; gap:0.5rem;">
-                        <button onclick="editUserRole(${s.id_user}, '${s.username}', '${s.account_role}')" 
-                                class="btn-xs" style="color:var(--accent-color); cursor:pointer;" title="Edit Role">
+                    <td style="display:flex; gap:0.5rem; justify-content:center;">
+                        <button onclick="openEditStaff('${staffData}')" 
+                                class="btn-xs" style="color:var(--accent-color); cursor:pointer;" title="Edit Staff">
                             <i class="fa-solid fa-user-pen"></i>
                         </button>
-                        <button onclick="deleteStaff(${s.id_pegawai}, '${s.nama_lengkap}')" 
+                        <button onclick="deleteStaff(${s.id_pegawai}, '${s.nama_lengkap.replace(/'/g, "\\'")}')" 
                                 class="btn-xs" style="color:var(--danger-color); cursor:pointer;" title="Delete Staff">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </td>`;
-            } else if (isAdmin) {
+            } else {
                 actionHtml = `<td><span style="color:#94a3b8">-</span></td>`;
             }
 
@@ -935,22 +938,66 @@ async function loadStaff() {
 }
 
 // Global function for Edit Role
-window.editUserRole = async (userId, username, currentRole) => {
-    const newRole = prompt(`Update role for ${username} (Admin/Dokter/Resepsionis/Pelanggan):`, currentRole);
-    if (newRole && newRole !== currentRole) {
-        try {
-            const res = await fetch(`/api/users/${userId}/role`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ role: newRole })
-            });
-            const data = await res.json();
-            alert(data.message);
-            if (res.ok) loadStaff();
-        } catch (err) {
-            console.error(err);
-            alert('Failed to update role');
+// Open Edit Staff Modal
+window.openEditStaff = (encodedData) => {
+    const s = JSON.parse(decodeURIComponent(encodedData));
+
+    document.getElementById('edit-staff-id').value = s.id_pegawai;
+    document.getElementById('edit-staff-name').value = s.nama_lengkap;
+    document.getElementById('edit-staff-position').value = s.jabatan;
+    document.getElementById('edit-staff-role').value = s.account_role || 'Dokter'; // Default fallback
+    document.getElementById('edit-staff-username').value = s.username || 'No Account';
+    document.getElementById('edit-staff-spec').value = s.spesialisasi || '';
+    document.getElementById('edit-staff-phone').value = s.no_hp || '';
+
+    // Handle initial specialization visibility
+    toggleEditSpesialisasi(s.jabatan);
+
+    openModal('editStaffModal');
+};
+
+// Toggle Specialization Field in Edit Modal
+window.toggleEditSpesialisasi = (role) => {
+    const specGroup = document.getElementById('edit-spesialisasi-group');
+    if (role === 'Dokter Hewan' || role === 'Groomer') {
+        specGroup.style.display = 'block';
+    } else {
+        specGroup.style.display = 'none';
+        document.getElementById('edit-staff-spec').value = '';
+    }
+};
+
+// Submit Edit Staff
+window.submitEditStaff = async (e) => {
+    e.preventDefault();
+    const staffId = document.getElementById('edit-staff-id').value;
+
+    const data = {
+        nama_lengkap: document.getElementById('edit-staff-name').value,
+        jabatan: document.getElementById('edit-staff-position').value,
+        role: document.getElementById('edit-staff-role').value,
+        spesialisasi: document.getElementById('edit-staff-spec').value,
+        no_hp: document.getElementById('edit-staff-phone').value
+    };
+
+    try {
+        const res = await fetch(`/api/staff/${staffId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+            alert('✅ Staff updated successfully!');
+            closeModal('editStaffModal');
+            loadStaff();
+        } else {
+            alert('❌ Error: ' + result.message);
         }
+    } catch (err) {
+        console.error(err);
+        alert('❌ Failed to update staff');
     }
 };
 

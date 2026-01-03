@@ -533,6 +533,69 @@
         </div>
     </div>
 
+    <!-- Edit Staff Modal -->
+    <div id="editStaffModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Staff Member</h3>
+                <button class="close-modal" onclick="closeModal('editStaffModal')">&times;</button>
+            </div>
+            <form id="editStaffForm" onsubmit="submitEditStaff(event)">
+                <input type="hidden" id="edit-staff-id">
+
+                <div class="input-group">
+                    <label>Full Name</label>
+                    <input type="text" id="edit-staff-name" required>
+                </div>
+
+                <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                    <div class="input-group">
+                        <label>Position / Role</label>
+                        <select id="edit-staff-position" required onchange="toggleEditSpesialisasi(this.value)">
+                            <option value="Dokter Hewan">Dokter Hewan</option>
+                            <option value="Groomer">Groomer</option>
+                            <option value="Staff">Staff (Admin/Receptionist)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>System Role (Login)</label>
+                        <select id="edit-staff-role" required>
+                            <option value="Dokter">Dokter</option>
+                            <option value="Resepsionis">Resepsionis</option>
+                            <option value="Admin">Admin</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Username</label>
+                    <input type="text" id="edit-staff-username" readonly
+                        style="background:#f1f5f9; color:var(--text-color); cursor:not-allowed; border-color:var(--glass-border);">
+                </div>
+
+                <div class="input-group" id="edit-spesialisasi-group">
+                    <label>Specialization</label>
+                    <input type="text" id="edit-staff-spec" placeholder="e.g. Surgery, Dermatology">
+                </div>
+
+                <div class="input-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="edit-staff-phone" pattern="[0-9]{10,15}"
+                        title="Phone number must be 10-15 digits (numeric only)" required>
+                </div>
+
+                <div class="modal-actions" style="display:flex; gap:1rem; margin-top:1.5rem;">
+                    <button type="button" class="secondary-btn" onclick="closeModal('editStaffModal')"
+                        style="flex:1; justify-content:center;">Cancel</button>
+                    <button type="submit" class="cta-button"
+                        style="flex:1; background:var(--primary-color); color:white; justify-content:center;">
+                        <i class="fa-solid fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Add Inventory Modal -->
     <div id="inventoryModal" class="modal-overlay hidden">
         <div class="modal-content">
@@ -583,7 +646,8 @@
 
                 <div class="input-group">
                     <label>Item Name</label>
-                    <input type="text" id="edit-inv-name" readonly style="background:#1e293b; cursor:not-allowed;">
+                    <input type="text" id="edit-inv-name" readonly
+                        style="background:#f1f5f9; color:var(--text-color); cursor:not-allowed; border-color:var(--glass-border);">
                 </div>
 
                 <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
@@ -603,9 +667,10 @@
                 </div>
 
                 <div class="modal-actions" style="display:flex; gap:1rem; margin-top:1.5rem;">
-                    <button type="button" class="btn-secondary" onclick="closeModal('editInventoryModal')"
-                        style="flex:1;">Cancel</button>
-                    <button type="submit" class="cta-button" style="flex:1;">
+                    <button type="button" class="secondary-btn" onclick="closeModal('editInventoryModal')"
+                        style="flex:1; justify-content:center;">Cancel</button>
+                    <button type="submit" class="cta-button"
+                        style="flex:1; background:var(--primary-color); color:white; justify-content:center;">
                         <i class="fa-solid fa-save"></i> Update Item
                     </button>
                 </div>

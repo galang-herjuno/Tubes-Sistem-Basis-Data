@@ -16,10 +16,7 @@
 
 /* Icon Gradients */
 .fa-solid {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--text-color);
 }
 
 * {
@@ -30,7 +27,7 @@
 }
 
 .cta-button {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    background: var(--text-color);
     border: none;
     padding: 0.8rem 1.5rem;
     border-radius: 50px;
@@ -46,6 +43,26 @@
 .cta-button:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+}
+
+.secondary-btn {
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-color);
+    padding: 0.8rem 1.5rem;
+    border-radius: 50px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.secondary-btn:hover {
+    border-color: var(--text-color);
+    background: rgba(0, 0, 0, 0.05);
 }
 
 body {
@@ -104,8 +121,8 @@ body {
 
 .menu a:hover,
 .menu a.active {
-    background: linear-gradient(90deg, rgba(139, 92, 246, 0.1), transparent);
-    color: var(--primary-color);
+    background: rgba(250, 204, 21, 0.2);
+    color: var(--text-color);
     border-left: 3px solid var(--primary-color);
 }
 
@@ -120,13 +137,13 @@ body {
 .avatar {
     width: 40px;
     height: 40px;
-    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    background: var(--primary-color);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    color: white;
+    color: var(--text-color);
 }
 
 .user-info h4 {
@@ -424,6 +441,13 @@ select option {
     font-size: 0.95rem;
     transition: all 0.2s;
     outline: none;
+}
+
+.input-group input[readonly] {
+    background-color: #f1f5f9;
+    color: var(--text-color);
+    cursor: not-allowed;
+    border-color: var(--glass-border);
 }
 
 .input-group input:focus,

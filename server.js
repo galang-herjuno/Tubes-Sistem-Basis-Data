@@ -1407,6 +1407,43 @@ app.put('/api/doctor/profile', authMiddleware, async (req, res) => {
     }
 });
 
+// Update Staff (Admin Only)
+app.put('/api/staff/:id', authMiddleware, async (req, res) => {
+    const { nama_lengkap, jabatan, spesialisasi, no_hp, role } = req.body;
+    const staffId = req.params.id;
+
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // 1. Update Pegawai Details
+        await connection.query(
+            'UPDATE pegawai SET nama_lengkap = ?, jabatan = ?, spesialisasi = ?, no_hp = ? WHERE id_pegawai = ?',
+            [nama_lengkap, jabatan, spesialisasi, no_hp, staffId]
+        );
+
+        // 2. Get User ID linked to this staff
+        const [staff] = await connection.query('SELECT id_user FROM pegawai WHERE id_pegawai = ?', [staffId]);
+
+        if (staff.length > 0 && staff[0].id_user) {
+            // 3. Update User Role
+            await connection.query(
+                'UPDATE users SET role = ? WHERE id_user = ?',
+                [role, staff[0].id_user]
+            );
+        }
+
+        await connection.commit();
+        res.json({ message: 'Staff updated successfully' });
+    } catch (err) {
+        await connection.rollback();
+        console.error(err);
+        res.status(500).json({ error: 'Failed to update staff' });
+    } finally {
+        connection.release();
+    }
+});
+
 // ==========================================
 // CUSTOMER PORTAL API ENDPOINTS
 // ==========================================
