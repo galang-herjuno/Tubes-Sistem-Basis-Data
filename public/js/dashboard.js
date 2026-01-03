@@ -63,12 +63,6 @@ function updateUIBasedOnRole(role) {
         if (revenueCard) revenueCard.style.display = 'none';
     } else if (role === 'Resepsionis') {
         receptionElements.forEach(el => el.style.display = 'block');
-        // Enable Inventory for Resepsionis
-        const inventoryLink = document.querySelector('.menu a[href*="Inventory"]');
-        if (inventoryLink && inventoryLink.parentElement) {
-            inventoryLink.parentElement.classList.add('role-resepsionis');
-            inventoryLink.parentElement.style.display = 'block';
-        }
     } else if (role === 'Pelanggan') {
         // Limited view for Pelanggan
     }
@@ -125,11 +119,22 @@ function setupNavigation() {
             } else if (text.includes('Settings')) {
                 window.switchSection('settings-view');
                 link.classList.add('active');
-                loadSettings();
+                loadDoctorProfile(); // Load profile data
             }
         });
     });
 }
+
+// Navigate to Inventory from Low Stock card
+window.navigateToInventory = () => {
+    const inventoryLink = document.querySelector('.menu a[href="#"]');
+    const links = document.querySelectorAll('.menu a');
+    links.forEach((link, index) => {
+        if (link.textContent.includes('Inventory')) {
+            link.click();
+        }
+    });
+};
 
 function setupSettings() {
     // Change Password Modal Logic
@@ -221,6 +226,77 @@ function setupSettings() {
     }
 }
 
+// ========================================
+// PROFILE MANAGEMENT
+// ========================================
+
+// Load Doctor/Staff Profile
+async function loadDoctorProfile() {
+    const res = await fetch('/api/pegawai/profile');
+    if (res.ok) {
+        const profile = await res.json();
+        document.getElementById('profile-name').value = profile.nama_lengkap || '';
+        document.getElementById('profile-spec').value = profile.spesialisasi || '';
+        document.getElementById('profile-phone').value = profile.no_hp || '';
+        document.getElementById('profile-email').value = profile.email || '';
+        document.getElementById('profile-address').value = profile.alamat || '';
+
+        // Show profile section for Dokter and Resepsionis
+        const profileSection = document.getElementById('doctor-profile-section');
+        if (profileSection && (window.currentUserRole === 'Dokter' || window.currentUserRole === 'Resepsionis')) {
+            profileSection.style.display = 'block';
+        }
+    }
+}
+
+// Update Doctor/Staff Profile
+window.updateDoctorProfile = async (e) => {
+    e.preventDefault();
+
+    const data = {
+        nama_lengkap: document.getElementById('profile-name').value.trim(),
+        spesialisasi: document.getElementById('profile-spec').value.trim(),
+        no_hp: document.getElementById('profile-phone').value.trim(),
+        email: document.getElementById('profile-email').value.trim(),
+        alamat: document.getElementById('profile-address').value.trim()
+    };
+
+    // Validate phone number
+    const phoneRegex = /^[0-9]{10,15}$/;
+    if (data.no_hp && !phoneRegex.test(data.no_hp)) {
+        alert('❌ Phone number must be 10-15 digits (numeric only)');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/pegawai/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+            alert('✅ Profile updated successfully!');
+            // Update displayed name if changed
+            const nameDisplay = document.getElementById('user-name');
+            if (nameDisplay && data.nama_lengkap) {
+                nameDisplay.textContent = data.nama_lengkap.split(' ')[0]; // First name
+            }
+        } else {
+            alert('❌ Error: ' + result.message);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('❌ Failed to update profile');
+    }
+};
+
+// ========================================
+// END PROFILE MANAGEMENT
+// ========================================
+
+
 // --- DATA LOADERS ---
 
 async function loadDashboardStats() {
@@ -251,12 +327,32 @@ async function fetchQueue() {
         tbody.innerHTML = '';
 
         if (queue.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8">No appointments today</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8">No appointments today</td></tr>';
             return;
         }
 
+        const isAdmin = window.currentUserRole === 'Admin';
+        const isResepsionis = window.currentUserRole === 'Resepsionis';
+        const canGenerateBill = isAdmin || isResepsionis;
+
         queue.forEach(item => {
             const tr = document.createElement('tr');
+
+            // Generate Bill button for completed appointments
+            let billButton = '';
+            if (canGenerateBill && item.status === 'Selesai') {
+                billButton = `
+                    <button onclick="generateBill(${item.id_daftar}, '${item.nama_hewan}')" 
+                            class="btn-xs" 
+                            style="background:#f59e0b; color:#1e293b; font-weight:600; padding:0.5rem 0.75rem; border-radius:6px; border:none; cursor:pointer; margin-left:0.5rem; transition:all 0.3s ease;" 
+                            onmouseover="this.style.background='#d97706'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(245, 158, 11, 0.4)'"
+                            onmouseout="this.style.background='#f59e0b'; this.style.transform='translateY(0)'; this.style.boxShadow='none'"
+                            title="Generate Bill">
+                        <i class="fa-solid fa-file-invoice-dollar"></i> Generate Bill
+                    </button>
+                `;
+            }
+
             tr.innerHTML = `
                 <td style="font-weight: 500">${item.nama_hewan}</td>
                 <td>${item.dokter}</td>
@@ -268,6 +364,7 @@ async function fetchQueue() {
                         <option value="Selesai" ${item.status === 'Selesai' ? 'selected' : ''}>Selesai</option>
                         <option value="Batal" ${item.status === 'Batal' ? 'selected' : ''}>Batal</option>
                     </select>
+                    ${billButton}
                 </td>
             `;
             tbody.appendChild(tr);
@@ -967,6 +1064,11 @@ async function loadInventory() {
                 tr.style.animation = 'pulse 2s infinite';
             }
 
+            // Check if user can edit (Admin or Resepsionis)
+            const isAdmin = window.currentUserRole === 'Admin';
+            const isResepsionis = window.currentUserRole === 'Resepsionis';
+            const canEdit = isAdmin || isResepsionis;
+
             tr.innerHTML = `
                 <td>${i.nama_barang}</td>
                 <td>${i.kategori}</td>
@@ -976,6 +1078,20 @@ async function loadInventory() {
                     ${isLowStock ?
                     '<span class="status-badge status-batal" style="box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);">Low Stock</span>' :
                     '<span class="status-badge status-selesai">OK</span>'}
+                </td>
+                <td>
+                    ${canEdit ? `
+                        <div style="display:flex; gap:0.5rem; justify-content:center;">
+                            <button onclick="openEditInventory(${i.id_barang}, '${i.nama_barang.replace(/'/g, "\\'")}', ${i.stok}, ${i.harga_satuan}, '${i.satuan}')" 
+                                    class="btn-xs" style="color:var(--accent-color); cursor:pointer;" title="Edit Stock">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="deleteInventoryItem(${i.id_barang}, '${i.nama_barang.replace(/'/g, "\\'")}  ')" 
+                                    class="btn-xs" style="color:var(--danger-color); cursor:pointer;" title="Delete Item">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    ` : '<span style="color:#94a3b8">-</span>'}
                 </td>
             `;
             tbody.appendChild(tr);
@@ -1083,6 +1199,115 @@ window.openModal = (id) => {
     originalOpenModal(id);
 };
 
+// ========================================
+// INVENTORY CRUD FUNCTIONS
+// ========================================
+
+// Open Edit Inventory Modal
+window.openEditInventory = (id, name, stock, price, unit) => {
+    document.getElementById('edit-inv-id').value = id;
+    document.getElementById('edit-inv-name').value = name;
+    document.getElementById('edit-inv-stock').value = stock;
+    document.getElementById('edit-inv-price').value = price;
+    document.getElementById('edit-inv-unit').value = unit;
+    openModal('editInventoryModal');
+};
+
+// Submit Edit Inventory
+window.submitEditInventory = async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-inv-id').value;
+    const data = {
+        stok: parseInt(document.getElementById('edit-inv-stock').value),
+        harga_satuan: parseFloat(document.getElementById('edit-inv-price').value),
+        satuan: document.getElementById('edit-inv-unit').value.trim()
+    };
+
+    try {
+        const res = await fetch(`/api/barang/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+            alert('✅ Inventory updated successfully!');
+            closeModal('editInventoryModal');
+            loadInventory();
+        } else {
+            alert('❌ Error: ' + result.message);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('❌ Failed to update inventory');
+    }
+};
+
+// Delete Inventory Item
+window.deleteInventoryItem = async (id, name) => {
+    if (!confirm(`⚠️ Are you sure you want to delete "${name}"?\n\nThis action cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/barang/${id}`, {
+            method: 'DELETE'
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+            alert('✅ Item deleted successfully!');
+            loadInventory();
+        } else {
+            alert('❌ Error: ' + result.message);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('❌ Failed to delete item');
+    }
+};
+
+// ========================================
+// BILLING SYSTEM
+// ========================================
+
+// Generate Bill from Completed Appointment
+window.generateBill = async (appointmentId, petName) => {
+    if (!confirm(`Generate transaction bill for ${petName}?\n\nThis will create a transaction based on the medical record and prescriptions.`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/billing/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_daftar: appointmentId })
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+            alert(`✅ Transaction generated successfully!\n\nTotal: Rp ${result.total_biaya.toLocaleString('id-ID')}\nTransaction ID: ${result.id_transaksi}`);
+            // Assuming fetchQueue is defined elsewhere to refresh the queue display
+            // fetchQueue(); 
+            loadTransactions(); // Refresh transactions if visible
+        } else {
+            alert('❌ Error: ' + result.message);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('❌ Failed to generate bill');
+    }
+};
+
+// ========================================
+// END BILLING SYSTEM
+// ========================================
+
+// ========================================
+// END INVENTORY CRUD
+// ========================================
+
 async function loadTransactions() {
     const res = await fetch('/api/transactions');
     if (res.ok) {
@@ -1105,16 +1330,24 @@ async function loadTransactions() {
                 <td>${t.metode_bayar}</td>
                 <td style="font-weight:bold">${formatCurrency(t.total_biaya)}</td>
                 <td>
-                    <button class="btn-xs" onclick="viewTransactionDetails(${t.id_transaksi})" 
-                            style="color:var(--primary-color); cursor:pointer; padding:0.5rem 1rem; background:rgba(139, 92, 246, 0.1); border:1px solid var(--primary-color); border-radius:5px;">
-                        <i class="fa-solid fa-eye"></i> View
-                    </button>
-                    ${window.currentUserRole === 'Admin' ? `
-                        <button class="btn-xs" onclick="deleteTransaction(${t.id_transaksi})" 
-                                style="color:#ef4444; cursor:pointer; padding:0.5rem 1rem; background:rgba(239, 68, 68, 0.1); border:1px solid #ef4444; border-radius:5px; margin-left:0.5rem;">
-                            <i class="fa-solid fa-trash"></i>
+                    <div style="display:flex; gap:0.5rem; justify-content:center;">
+                        <button onclick="viewTransactionDetails(${t.id_transaksi})" 
+                                style="background:#f59e0b; color:#1e293b; font-weight:600; padding:0.5rem 1rem; border-radius:6px; border:none; cursor:pointer; transition:all 0.3s ease; display:inline-flex; align-items:center; gap:0.5rem;"
+                                onmouseover="this.style.background='#d97706'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(245, 158, 11, 0.4)'"
+                                onmouseout="this.style.background='#f59e0b'; this.style.transform='translateY(0)'; this.style.boxShadow='none'"
+                                title="View Details">
+                            <i class="fa-solid fa-eye"></i> View
                         </button>
-                    ` : ''}
+                        ${window.currentUserRole === 'Admin' ? `
+                            <button onclick="deleteTransaction(${t.id_transaksi})" 
+                                    style="background:#ef4444; color:white; font-weight:600; padding:0.5rem 1rem; border-radius:6px; border:none; cursor:pointer; transition:all 0.3s ease; display:inline-flex; align-items:center; gap:0.5rem;"
+                                    onmouseover="this.style.background='#dc2626'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(239, 68, 68, 0.4)'"
+                                    onmouseout="this.style.background='#ef4444'; this.style.transform='translateY(0)'; this.style.boxShadow='none'"
+                                    title="Delete Transaction">
+                                <i class="fa-solid fa-trash"></i> Delete
+                            </button>
+                        ` : ''}
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -1129,25 +1362,101 @@ window.viewTransactionDetails = async (txId) => {
         if (res.ok) {
             const { transaction, details } = await res.json();
 
-            let detailsHtml = '<table style="width:100%; margin-top:1rem;"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead><tbody>';
+            let detailsHtml = `
+                <div style="background:rgba(30, 41, 59, 0.95); backdrop-filter:blur(10px); border:1px solid rgba(245, 158, 11, 0.3); border-radius:12px; padding:2rem; max-width:600px; margin:2rem auto; box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; border-bottom:2px solid #f59e0b; padding-bottom:1rem;">
+                        <h2 style="color:#f59e0b; margin:0; font-size:1.5rem;">
+                            <i class="fa-solid fa-receipt"></i> Transaction #${txId}
+                        </h2>
+                        <button onclick="closeTransactionModal()" style="background:none; border:none; color:#94a3b8; font-size:1.5rem; cursor:pointer; transition:color 0.3s;" onmouseover="this.style.color='#f59e0b'" onmouseout="this.style.color='#94a3b8'">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div style="margin-bottom:1.5rem;">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                            <div>
+                                <p style="color:#94a3b8; margin:0; font-size:0.85rem;">Customer</p>
+                                <p style="color:white; margin:0.25rem 0 0 0; font-weight:600;">${transaction.nama_pemilik || 'Guest'}</p>
+                            </div>
+                            <div>
+                                <p style="color:#94a3b8; margin:0; font-size:0.85rem;">Payment Method</p>
+                                <p style="color:white; margin:0.25rem 0 0 0; font-weight:600;">${transaction.metode_bayar}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <p style="color:#94a3b8; margin:0; font-size:0.85rem;">Date & Time</p>
+                            <p style="color:white; margin:0.25rem 0 0 0; font-weight:600;">${new Date(transaction.tgl_transaksi).toLocaleString()}</p>
+                        </div>
+                    </div>
+                    
+                    <div style="background:rgba(255,255,255,0.03); border-radius:8px; padding:1rem; margin-bottom:1rem;">
+                        <h3 style="color:#f59e0b; margin:0 0 1rem 0; font-size:1.1rem;">Items</h3>
+                        <table style="width:100%; color:white;">
+                            <thead>
+                                <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
+                                    <th style="text-align:left; padding:0.5rem; color:#94a3b8; font-weight:500;">Item</th>
+                                    <th style="text-align:center; padding:0.5rem; color:#94a3b8; font-weight:500;">Qty</th>
+                                    <th style="text-align:right; padding:0.5rem; color:#94a3b8; font-weight:500;">Price</th>
+                                    <th style="text-align:right; padding:0.5rem; color:#94a3b8; font-weight:500;">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
             details.forEach(d => {
                 const itemName = d.nama_layanan || d.nama_barang;
                 detailsHtml += `
-                    <tr>
-                        <td>${itemName}</td>
-                        <td>${d.qty}</td>
-                        <td>${formatCurrency(d.harga_saat_ini)}</td>
-                        <td>${formatCurrency(d.subtotal)}</td>
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <td style="padding:0.75rem 0.5rem;">${itemName}</td>
+                        <td style="text-align:center; padding:0.75rem 0.5rem;">${d.qty}</td>
+                        <td style="text-align:right; padding:0.75rem 0.5rem;">${formatCurrency(d.harga_saat_ini)}</td>
+                        <td style="text-align:right; padding:0.75rem 0.5rem; font-weight:600;">${formatCurrency(d.subtotal)}</td>
                     </tr>
                 `;
             });
-            detailsHtml += '</tbody></table>';
 
-            alert(`Transaction #${txId}\nCustomer: ${transaction.nama_pemilik || 'Guest'}\nDate: ${new Date(transaction.tgl_transaksi).toLocaleString()}\nPayment: ${transaction.metode_bayar}\nTotal: ${formatCurrency(transaction.total_biaya)}\n\n${detailsHtml}`);
+            detailsHtml += `
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div style="background:#f59e0b; color:#1e293b; padding:1rem; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:700; font-size:1.1rem;">TOTAL</span>
+                        <span style="font-weight:700; font-size:1.3rem;">${formatCurrency(transaction.total_biaya)}</span>
+                    </div>
+                    
+                    <button onclick="closeTransactionModal()" style="width:100%; margin-top:1rem; background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.2); padding:0.75rem; border-radius:6px; cursor:pointer; font-weight:600; transition:all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                        Close
+                    </button>
+                </div>
+            `;
+
+            // Create modal overlay
+            const modalOverlay = document.createElement('div');
+            modalOverlay.id = 'transaction-detail-modal';
+            modalOverlay.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9999; display:flex; align-items:center; justify-content:center; padding:1rem; overflow-y:auto;';
+            modalOverlay.innerHTML = detailsHtml;
+
+            // Close on overlay click
+            modalOverlay.onclick = (e) => {
+                if (e.target === modalOverlay) {
+                    closeTransactionModal();
+                }
+            };
+
+            document.body.appendChild(modalOverlay);
         }
     } catch (err) {
         console.error(err);
         alert('Failed to load transaction details');
+    }
+};
+
+// Close Transaction Modal
+window.closeTransactionModal = () => {
+    const modal = document.getElementById('transaction-detail-modal');
+    if (modal) {
+        modal.remove();
     }
 };
 
