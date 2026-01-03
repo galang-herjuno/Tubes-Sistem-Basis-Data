@@ -27,11 +27,11 @@
 }
 
 .cta-button {
-    background: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     border: none;
     padding: 0.8rem 1.5rem;
     border-radius: 50px;
-    color: black;
+    color: white;
     font-weight: 600;
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;

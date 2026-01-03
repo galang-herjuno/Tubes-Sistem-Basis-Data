@@ -17,14 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const header = document.querySelector('.glass-header');
     window.addEventListener('scroll', () => {
         if (window.scrollY > 50) {
-            header.classList.add('scrolled');
-            // Remove inline styles to allow CSS to take over
-            header.style.background = '';
-            header.style.boxShadow = '';
+            header.style.background = 'rgba(15, 23, 42, 0.9)';
+            header.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
         } else {
-            header.classList.remove('scrolled');
-            header.style.background = '';
-            header.style.boxShadow = '';
+            header.style.background = 'rgba(15, 23, 42, 0.7)';
+            header.style.boxShadow = 'none';
         }
     });
 });
