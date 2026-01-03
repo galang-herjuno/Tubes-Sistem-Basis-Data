@@ -1272,12 +1272,202 @@ window.deleteInventoryItem = async (id, name) => {
 // BILLING SYSTEM
 // ========================================
 
-// Generate Bill from Completed Appointment
+// Generate Bill - Show Preview First
 window.generateBill = async (appointmentId, petName) => {
-    if (!confirm(`Generate transaction bill for ${petName}?\n\nThis will create a transaction based on the medical record and prescriptions.`)) {
-        return;
+    try {
+        // Fetch bill preview data
+        const res = await fetch(`/api/billing/preview/${appointmentId}`);
+
+        if (!res.ok) {
+            const error = await res.json();
+            alert('❌ Error: ' + error.message);
+            return;
+        }
+
+        const data = await res.json();
+
+        // Show preview modal
+        showBillPreviewModal(data, appointmentId);
+
+    } catch (err) {
+        console.error(err);
+        alert('❌ Failed to load bill preview');
+    }
+};
+
+// Show Bill Preview Modal
+function showBillPreviewModal(data, appointmentId) {
+    const date = new Date(data.appointment.tanggal);
+    const formattedDate = date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+    });
+    const formattedTime = date.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    // Build medicines list
+    let medicinesHTML = '';
+    const medicines = data.items.filter(item => item.jenis_item === 'Barang');
+
+    if (medicines.length > 0) {
+        medicinesHTML = `
+            <div style="background:rgba(255,255,255,0.03); border-radius:8px; padding:1rem; margin-bottom:1rem;">
+                <h4 style="color:#f59e0b; margin:0 0 0.75rem 0; font-size:0.95rem;">
+                    <i class="fa-solid fa-pills"></i> Obat yang Digunakan
+                </h4>
+                <div style="display:flex; flex-direction:column; gap:0.5rem;">
+        `;
+
+        medicines.forEach(med => {
+            medicinesHTML += `
+                <div style="display:flex; justify-content:space-between; padding:0.5rem; background:rgba(255,255,255,0.02); border-radius:4px;">
+                    <div style="flex:1;">
+                        <div style="color:white; font-weight:500;">${med.nama}</div>
+                        <div style="color:#94a3b8; font-size:0.85rem;">${med.aturan_pakai || 'Sesuai petunjuk dokter'}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="color:white; font-weight:600;">${med.qty} ${med.satuan}</div>
+                        <div style="color:#f59e0b; font-size:0.85rem;">${formatCurrency(med.subtotal)}</div>
+                    </div>
+                </div>
+            `;
+        });
+
+        medicinesHTML += `
+                </div>
+            </div>
+        `;
     }
 
+    // Build items table
+    let itemsHTML = '';
+    data.items.forEach(item => {
+        itemsHTML += `
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                <td style="padding:0.75rem 0.5rem; color:white;">${item.nama}</td>
+                <td style="text-align:center; padding:0.75rem 0.5rem; color:white;">${item.qty}</td>
+                <td style="text-align:right; padding:0.75rem 0.5rem; color:white;">${formatCurrency(item.harga)}</td>
+                <td style="text-align:right; padding:0.75rem 0.5rem; color:#f59e0b; font-weight:600;">${formatCurrency(item.subtotal)}</td>
+            </tr>
+        `;
+    });
+
+    const modalHTML = `
+        <div style="background:rgba(30, 41, 59, 0.98); backdrop-filter:blur(10px); border:1px solid rgba(245, 158, 11, 0.3); border-radius:12px; padding:2rem; max-width:650px; margin:0 auto; box-shadow:0 20px 60px rgba(0,0,0,0.7);">
+            
+            <!-- Header -->
+            <div style="text-align:center; margin-bottom:1.5rem; border-bottom:2px solid #f59e0b; padding-bottom:1rem;">
+                <div style="width:60px; height:60px; background:#f59e0b; border-radius:50%; margin:0 auto 1rem; display:flex; align-items:center; justify-content:center;">
+                    <i class="fa-solid fa-file-invoice-dollar" style="font-size:1.8rem; color:#1e293b;"></i>
+                </div>
+                <h2 style="color:#f59e0b; margin:0 0 0.5rem 0; font-size:1.5rem;">Preview Tagihan</h2>
+                <p style="color:#94a3b8; margin:0; font-size:0.9rem;">Periksa detail sebelum membuat tagihan</p>
+            </div>
+
+            <!-- Appointment Info -->
+            <div style="background:rgba(255,255,255,0.03); border-radius:8px; padding:1.25rem; margin-bottom:1rem;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:0.75rem;">
+                    <div>
+                        <p style="color:#94a3b8; margin:0; font-size:0.85rem;">ID Appointment</p>
+                        <p style="color:white; margin:0.25rem 0 0 0; font-weight:600;">#${data.appointment.id_daftar}</p>
+                    </div>
+                    <div>
+                        <p style="color:#94a3b8; margin:0; font-size:0.85rem;">Tanggal & Waktu</p>
+                        <p style="color:white; margin:0.25rem 0 0 0; font-weight:600;">${formattedDate}</p>
+                        <p style="color:#94a3b8; margin:0; font-size:0.85rem;">${formattedTime}</p>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                    <div>
+                        <p style="color:#94a3b8; margin:0; font-size:0.85rem;">Pemilik</p>
+                        <p style="color:white; margin:0.25rem 0 0 0; font-weight:600;">${data.owner.nama}</p>
+                        <p style="color:#94a3b8; margin:0; font-size:0.85rem;">${data.owner.no_hp || '-'}</p>
+                    </div>
+                    <div>
+                        <p style="color:#94a3b8; margin:0; font-size:0.85rem;">Hewan</p>
+                        <p style="color:white; margin:0.25rem 0 0 0; font-weight:600;">${data.pet.nama}</p>
+                        <p style="color:#94a3b8; margin:0; font-size:0.85rem;">${data.pet.jenis} - ${data.pet.ras || 'Mixed'}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medicines Detail -->
+            ${medicinesHTML}
+
+            <!-- Items Table -->
+            <div style="background:rgba(255,255,255,0.03); border-radius:8px; padding:1rem; margin-bottom:1rem;">
+                <h4 style="color:#f59e0b; margin:0 0 1rem 0; font-size:0.95rem;">Rincian Biaya</h4>
+                <table style="width:100%;">
+                    <thead>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
+                            <th style="text-align:left; padding:0.5rem; color:#94a3b8; font-weight:500; font-size:0.85rem;">Item</th>
+                            <th style="text-align:center; padding:0.5rem; color:#94a3b8; font-weight:500; font-size:0.85rem;">Qty</th>
+                            <th style="text-align:right; padding:0.5rem; color:#94a3b8; font-weight:500; font-size:0.85rem;">Harga</th>
+                            <th style="text-align:right; padding:0.5rem; color:#94a3b8; font-weight:500; font-size:0.85rem;">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsHTML}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Total -->
+            <div style="background:#f59e0b; color:#1e293b; padding:1.25rem; border-radius:8px; margin-bottom:1rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:700; font-size:1.1rem;">TOTAL TAGIHAN</span>
+                    <span style="font-weight:700; font-size:1.5rem;">${formatCurrency(data.total_biaya)}</span>
+                </div>
+            </div>
+
+            <!-- Thank You Message -->
+            <div style="text-align:center; padding:1rem; background:rgba(245,158,11,0.1); border-radius:8px; margin-bottom:1.5rem;">
+                <p style="color:#f59e0b; margin:0; font-size:0.95rem; font-weight:500;">
+                    <i class="fa-solid fa-heart"></i> Terima kasih telah mempercayakan PawWhisker :)
+                </p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <button onclick="closeBillPreviewModal()" style="background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.2); padding:0.75rem; border-radius:6px; cursor:pointer; font-weight:600; transition:all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                    <i class="fa-solid fa-times"></i> Batal
+                </button>
+                <button onclick="confirmGenerateBill(${appointmentId})" style="background:#f59e0b; color:#1e293b; border:none; padding:0.75rem; border-radius:6px; cursor:pointer; font-weight:600; transition:all 0.3s;" onmouseover="this.style.background='#d97706'" onmouseout="this.style.background='#f59e0b'">
+                    <i class="fa-solid fa-check"></i> Konfirmasi & Buat Tagihan
+                </button>
+            </div>
+        </div>
+    `;
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.id = 'bill-preview-modal';
+    // Fixed: Changed display to block and padding to allow scrolling
+    modalOverlay.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:9999; overflow-y:auto; padding:2rem 1rem; animation:fadeIn 0.3s ease;';
+    modalOverlay.innerHTML = modalHTML;
+
+    modalOverlay.onclick = (e) => {
+        if (e.target === modalOverlay) {
+            closeBillPreviewModal();
+        }
+    };
+
+    document.body.appendChild(modalOverlay);
+}
+
+// Close Bill Preview Modal
+window.closeBillPreviewModal = () => {
+    const modal = document.getElementById('bill-preview-modal');
+    if (modal) {
+        modal.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => modal.remove(), 300);
+    }
+};
+
+// Confirm and Generate Bill
+window.confirmGenerateBill = async (appointmentId) => {
     try {
         const res = await fetch('/api/billing/generate', {
             method: 'POST',
@@ -1287,9 +1477,9 @@ window.generateBill = async (appointmentId, petName) => {
 
         const result = await res.json();
         if (res.ok) {
-            // Show beautiful success modal instead of alert
-            showBillSuccessModal(result.total_biaya, result.id_transaksi, petName);
-            loadTransactions(); // Refresh transactions if visible
+            closeBillPreviewModal();
+            showBillSuccessModal(result.total_biaya, result.id_transaksi, 'Pet');
+            loadTransactions();
         } else {
             alert('❌ Error: ' + result.message);
         }
@@ -1298,6 +1488,7 @@ window.generateBill = async (appointmentId, petName) => {
         alert('❌ Failed to generate bill');
     }
 };
+
 
 // Show Bill Success Modal
 function showBillSuccessModal(totalBiaya, transactionId, petName) {
