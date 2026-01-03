@@ -986,8 +986,149 @@ app.delete('/api/transactions/:id', authMiddleware, async (req, res) => {
 });
 
 // ========================================
-// BILLING SYSTEM - Generate Bill from Appointment
+// BILLING SYSTEM - Preview & Generate Bill
 // ========================================
+
+// GET Bill Preview - Show details before confirming
+app.get('/api/billing/preview/:id_daftar', authMiddleware, async (req, res) => {
+    const { id_daftar } = req.params;
+    const userRole = req.session.role;
+
+    if (userRole !== 'Admin' && userRole !== 'Resepsionis') {
+        return res.status(403).json({ message: 'Access denied' });
+    }
+
+    try {
+        // Check if transaction already exists
+        const [existing] = await db.query(
+            'SELECT id_transaksi FROM transaksi WHERE id_daftar = ?',
+            [id_daftar]
+        );
+
+        if (existing.length > 0) {
+            return res.status(400).json({ message: 'Transaction already exists for this appointment' });
+        }
+
+        // Get complete appointment details with owner and pet info
+        const [appointment] = await db.query(`
+            SELECT 
+                p.id_daftar,
+                p.tgl_kunjungan,
+                p.status,
+                h.nama_hewan,
+                h.jenis_hewan,
+                h.ras,
+                pm.id_pemilik,
+                pm.nama_pemilik,
+                pm.no_hp,
+                pm.email,
+                pg.nama_lengkap as dokter_nama
+            FROM pendaftaran p
+            JOIN hewan h ON p.id_hewan = h.id_hewan
+            JOIN pemilik pm ON h.id_pemilik = pm.id_pemilik
+            LEFT JOIN pegawai pg ON p.id_pegawai = pg.id_pegawai
+            WHERE p.id_daftar = ?
+        `, [id_daftar]);
+
+        if (appointment.length === 0) {
+            return res.status(404).json({ message: 'Appointment not found' });
+        }
+
+        if (appointment[0].status !== 'Selesai') {
+            return res.status(400).json({ message: 'Can only generate bill for completed appointments' });
+        }
+
+        const appointmentData = appointment[0];
+        let totalBiaya = 0;
+        const items = [];
+
+        // Get service (Konsultasi Umum)
+        const [service] = await db.query(
+            'SELECT id_layanan, nama_layanan, harga_dasar FROM layanan WHERE nama_layanan = "Konsultasi Umum" LIMIT 1'
+        );
+
+        if (service.length > 0) {
+            const hargaLayanan = parseFloat(service[0].harga_dasar);
+            totalBiaya += hargaLayanan;
+            items.push({
+                jenis_item: 'Layanan',
+                nama: service[0].nama_layanan,
+                id_layanan: service[0].id_layanan,
+                id_barang: null,
+                harga: hargaLayanan,
+                qty: 1,
+                subtotal: hargaLayanan
+            });
+        }
+
+        // Get prescriptions with medicine details
+        const [prescriptions] = await db.query(`
+            SELECT 
+                ro.id_barang,
+                ro.jumlah,
+                ro.aturan_pakai,
+                b.nama_barang,
+                b.harga_satuan,
+                b.satuan
+            FROM rekam_medis rm
+            JOIN resep_obat ro ON rm.id_rekam = ro.id_rekam
+            JOIN barang b ON ro.id_barang = b.id_barang
+            WHERE rm.id_daftar = ?
+        `, [id_daftar]);
+
+        // Add prescriptions to items
+        for (const rx of prescriptions) {
+            const hargaSatuan = parseFloat(rx.harga_satuan);
+            const qty = parseInt(rx.jumlah);
+            const subtotal = hargaSatuan * qty;
+
+            totalBiaya += subtotal;
+
+            items.push({
+                jenis_item: 'Barang',
+                nama: rx.nama_barang,
+                id_layanan: null,
+                id_barang: rx.id_barang,
+                harga: hargaSatuan,
+                qty: qty,
+                satuan: rx.satuan,
+                aturan_pakai: rx.aturan_pakai,
+                subtotal: subtotal
+            });
+        }
+
+        // Return complete preview data
+        res.json({
+            appointment: {
+                id_daftar: appointmentData.id_daftar,
+                tanggal: appointmentData.tgl_kunjungan,
+                status: appointmentData.status
+            },
+            owner: {
+                id_pemilik: appointmentData.id_pemilik,
+                nama: appointmentData.nama_pemilik,
+                no_hp: appointmentData.no_hp,
+                email: appointmentData.email
+            },
+            pet: {
+                nama: appointmentData.nama_hewan,
+                jenis: appointmentData.jenis_hewan,
+                ras: appointmentData.ras
+            },
+            doctor: {
+                nama: appointmentData.dokter_nama || 'Unknown'
+            },
+            items: items,
+            total_biaya: totalBiaya
+        });
+
+    } catch (err) {
+        console.error('Bill preview error:', err);
+        res.status(500).json({ message: 'Failed to generate bill preview' });
+    }
+});
+
+// POST Generate Bill - Confirm and create transaction
 app.post('/api/billing/generate', authMiddleware, async (req, res) => {
     const { id_daftar } = req.body;
     const userRole = req.session.role;
