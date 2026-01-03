@@ -16,10 +16,7 @@
 
 /* Icon Gradients */
 .fa-solid {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--primary-color);
 }
 
 * {
@@ -30,11 +27,11 @@
 }
 
 .cta-button {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    background: var(--primary-color);
     border: none;
     padding: 0.8rem 1.5rem;
     border-radius: 50px;
-    color: white;
+    color: black;
     font-weight: 600;
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;

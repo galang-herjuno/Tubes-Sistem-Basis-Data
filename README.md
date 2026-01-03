@@ -1,46 +1,21 @@
-# Paw Whisker Pet Care System
+# Tubes-Sistem-Basis-Data
 
-Sistem manajemen klinik hewan dengan role-based access control.
+Sebelum run, pastikan sudah:
+1. Menginstall Node.js
+2. Menginstall MySQL
+3. Menginstall XAMPP/Laragon (default Laragon)
 
-## 🚀 Quick Start
+Cara Run Project 
+1. Pastikan database SQL sudah dijalankan dengan port 3306
+2. Install depedencies dengan perintah "npm install" (Hanya Sekali)
+3. Run project dengan perintah "npm run dev"
+4. Akses project di "http://localhost:3000"
 
-### 1. Setup Database
-```bash
-# Jalankan manual di MySQL
-mysql -u root -p < database.sql
-```
+Password untuk role:
+1. admin > admin123
+2. dokter > dokter123
+3. resepsionis > resepsionis123
 
-### 2. Seed Data (Optional - untuk testing)
-```bash
-node seed.js
-```
 
-### 3. Run Server
-```bash
-npm start
-```
-
-## 🔑 Test Accounts
-
-Setelah seeding:
-- **Admin**: admin / password123
-- **Doctor**: dr.sarah / password123  
-- **Receptionist**: receptionist / password123
-
-## 📁 File Structure
-
-```
-├── database.sql       # Database schema (run manual)
-├── seed.js           # Sample data untuk testing
-├── server.js         # Main server
-└── public/           # Frontend files
-```
-
-## 🛠️ Development
-
-```bash
-npm install
-npm start
-```
-
-Server akan berjalan di `http://localhost:3000`
+untuk seeding user (kalo udah diacak2) perlu ketik:
+1. node seed_users.js

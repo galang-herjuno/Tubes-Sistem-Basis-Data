@@ -65,8 +65,6 @@ CREATE TABLE pegawai (
     jabatan ENUM('Dokter Hewan', 'Groomer', 'Staff') NOT NULL,
     spesialisasi VARCHAR(100), -- Bisa NULL
     no_hp VARCHAR(20),
-    email VARCHAR(100),
-    alamat VARCHAR(255),
     FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE SET NULL
 );
 
@@ -158,11 +156,3 @@ CREATE TABLE detail_transaksi (
     FOREIGN KEY (id_layanan) REFERENCES layanan(id_layanan),
     FOREIGN KEY (id_barang) REFERENCES barang(id_barang)
 );
-
--- ==========================================
--- END OF SCHEMA DEFINITION
--- ==========================================
--- 
--- To populate with sample data, run: node seed.js
--- 
--- ==========================================

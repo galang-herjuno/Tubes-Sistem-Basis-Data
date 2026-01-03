@@ -105,8 +105,7 @@
                     </div>
                 </div>
 
-                <div class="stat-card" onclick="navigateToInventory()" style="cursor:pointer;"
-                    title="Click to view inventory">
+                <div class="stat-card">
                     <div class="stat-icon icon-orange">
                         <i class="fa-solid fa-triangle-exclamation"></i>
                     </div>
@@ -331,7 +330,6 @@
                                 <th>Stock</th>
                                 <th>Price</th>
                                 <th>Status</th>
-                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -416,46 +414,18 @@
                     <button id="openChangePassModalBtn" class="cta-button" style="width: 100%;">Change Password</button>
                 </div>
 
-                <!-- Doctor/Staff Profile Section -->
+                <!-- Doctor Profile Section -->
                 <div id="doctor-profile-section"
                     style="display:none; margin-bottom:2rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 2rem;">
-                    <h4 style="margin-bottom: 1rem; color:var(--primary-color);">My Profile</h4>
+                    <h4 style="margin-bottom: 1rem; color:var(--primary-color);">Doctor Profile</h4>
                     <form onsubmit="updateDoctorProfile(event)">
                         <div class="input-group">
-                            <label>Full Name *</label>
-                            <input type="text" id="profile-name" required
+                            <label>Phone Number</label>
+                            <input type="text" id="doctor-no-hp" required
                                 style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px;">
                         </div>
-
-                        <div class="input-group">
-                            <label>Specialization</label>
-                            <input type="text" id="profile-spec" placeholder="e.g. Surgery, Dermatology"
-                                style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px;">
-                        </div>
-
-                        <div class="input-group">
-                            <label>Phone Number *</label>
-                            <input type="tel" id="profile-phone" pattern="[0-9]{10,15}"
-                                title="Phone number must be 10-15 digits (numeric only)" placeholder="08123456789"
-                                required
-                                style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px;">
-                        </div>
-
-                        <div class="input-group">
-                            <label>Email</label>
-                            <input type="email" id="profile-email" placeholder="your.email@example.com"
-                                style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px;">
-                        </div>
-
-                        <div class="input-group">
-                            <label>Address</label>
-                            <textarea id="profile-address" rows="3" placeholder="Your address"
-                                style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px; resize:vertical;"></textarea>
-                        </div>
-
-                        <button type="submit" class="cta-button" style="width:100%; margin-top:1rem;">
-                            <i class="fa-solid fa-save"></i> Update Profile
-                        </button>
+                        <button type="submit" class="cta-button" style="width:100%; margin-top:1rem;">Update
+                            Profile</button>
                     </form>
                 </div>
 
@@ -512,8 +482,7 @@
                 </div>
                 <div class="input-group">
                     <label>Phone Number</label>
-                    <input type="tel" name="no_hp" pattern="[0-9]{10,15}"
-                        title="Phone number must be 10-15 digits (numeric only)" placeholder="08123456789" required>
+                    <input type="text" name="no_hp" required>
                 </div>
                 <!-- Account Details -->
                 <div style="margin-top:1rem; border-top:1px solid var(--glass-border); padding-top:1rem;">
@@ -570,49 +539,6 @@
             </form>
         </div>
     </div>
-
-    <!-- Edit Inventory Modal -->
-    <div id="editInventoryModal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Edit Inventory Item</h3>
-                <button class="close-modal" onclick="closeModal('editInventoryModal')">&times;</button>
-            </div>
-            <form id="editInventoryForm" onsubmit="submitEditInventory(event)">
-                <input type="hidden" id="edit-inv-id">
-
-                <div class="input-group">
-                    <label>Item Name</label>
-                    <input type="text" id="edit-inv-name" readonly style="background:#1e293b; cursor:not-allowed;">
-                </div>
-
-                <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-                    <div class="input-group">
-                        <label>Stock Quantity *</label>
-                        <input type="number" id="edit-inv-stock" min="0" required>
-                    </div>
-                    <div class="input-group">
-                        <label>Unit Type *</label>
-                        <input type="text" id="edit-inv-unit" required placeholder="e.g. Pcs, Kg, Botol">
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <label>Unit Price (Rp) *</label>
-                    <input type="number" id="edit-inv-price" min="0" step="100" required>
-                </div>
-
-                <div class="modal-actions" style="display:flex; gap:1rem; margin-top:1.5rem;">
-                    <button type="button" class="btn-secondary" onclick="closeModal('editInventoryModal')"
-                        style="flex:1;">Cancel</button>
-                    <button type="submit" class="cta-button" style="flex:1;">
-                        <i class="fa-solid fa-save"></i> Update Item
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
 
     <!-- Change Password Modal -->
     <div id="passwordModal" class="modal-overlay hidden">
