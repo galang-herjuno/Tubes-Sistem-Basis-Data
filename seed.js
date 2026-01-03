@@ -27,11 +27,11 @@ async function seed() {
             ('customer', '${customerHash}', 'Pelanggan')`);
         console.log('✅ Users seeded (Admin, Dokter, Resepsionis, Pelanggan)');
 
-        // 2. Staff
-        await connection.query(`INSERT IGNORE INTO pegawai (id_user, nama_lengkap, jabatan, spesialisasi, no_hp) VALUES 
-            (2, 'Dr. Sarah Johnson', 'Dokter Hewan', 'Surgery', '081234567890'),
-            (3, 'Maria Garcia', 'Staff', NULL, '081234567891')`);
-        console.log('✅ Staff seeded');
+        // 2. Staff (with email and alamat)
+        await connection.query(`INSERT IGNORE INTO pegawai (id_user, nama_lengkap, jabatan, spesialisasi, no_hp, email, alamat) VALUES 
+            (2, 'Dr. Sarah Johnson', 'Dokter Hewan', 'Surgery', '081234567890', 'sarah@pawwhisker.com', 'Jl. Veteriner No. 10'),
+            (3, 'Maria Garcia', 'Staff', NULL, '081234567891', 'maria@pawwhisker.com', 'Jl. Klinik No. 5')`);
+        console.log('✅ Staff seeded (with email & address)');
 
         // 3. Owner (linked to customer account)
         await connection.query(`INSERT IGNORE INTO pemilik (id_user, nama_pemilik, alamat, no_hp, email) VALUES 
@@ -53,26 +53,34 @@ async function seed() {
         // 6. Inventory (with low stock items for testing)
         await connection.query(`INSERT IGNORE INTO barang (nama_barang, kategori, stok, harga_satuan, satuan) VALUES 
             ('Amoxicillin 500mg', 'Obat', 50, 15000, 'Tablet'),
+            ('Vitamin B Complex', 'Obat', 30, 25000, 'Tablet'),
             ('Obat Cacing', 'Obat', 3, 35000, 'Tablet'),
             ('Obat Kutu', 'Obat', 2, 120000, 'Pipet'),
             ('Royal Canin 2kg', 'Makanan', 10, 250000, 'Pack')`);
-        console.log('✅ Inventory seeded (2 low stock items)');
+        console.log('✅ Inventory seeded (2 low stock items for testing)');
 
-        // 7. Appointment
+        // 7. Appointment (for today)
         const today = new Date().toISOString().split('T')[0];
         await connection.query(`INSERT IGNORE INTO pendaftaran (id_hewan, id_pegawai, tgl_kunjungan, keluhan_awal, status) VALUES 
             (1, 1, '${today} 09:00:00', 'Kucing tidak mau makan', 'Menunggu')`);
-        console.log('✅ Appointment seeded');
+        console.log('✅ Appointment seeded (today at 09:00)');
 
-        console.log('\n✨ Seeding completed!');
-        console.log('\n📋 Test Accounts:');
-        console.log('   Admin:        admin / password123');
-        console.log('   Doctor:       sarah / password123');
-        console.log('   Receptionist: resepsionis / password123');
-        console.log('   Customer:     customer / password123\n');
+        console.log('\n✨ Seeding completed successfully!');
+        console.log('\n📋 Test Accounts (username / password):');
+        console.log('   👑 Admin:        admin / admin123');
+        console.log('   👨‍⚕️ Doctor:       sarah / sarah123');
+        console.log('   📋 Receptionist: resepsionis / resepsionis123');
+        console.log('   👤 Customer:     customer / customer123');
+        console.log('\n💡 Password pattern: {username}123');
+        console.log('📊 Database ready with sample data!\n');
 
     } catch (err) {
-        console.error('❌ Error:', err.message);
+        console.error('❌ Seeding Error:', err.message);
+        console.error('\n💡 Troubleshooting:');
+        console.error('   1. Make sure database.sql has been run first');
+        console.error('   2. Check .env file for correct database credentials');
+        console.error('   3. Ensure MySQL server is running');
+        process.exit(1);
     } finally {
         await connection.end();
     }
