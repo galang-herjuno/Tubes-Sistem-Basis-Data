@@ -437,7 +437,7 @@ app.get('/api/dashboard/analytics', authMiddleware, async (req, res) => {
     try {
         // Sales Chart (Last 7 Days)
         const [sales] = await db.query(`
-            SELECT DATE_FORMAT(tgl_transaksi, '%Y-%m-%d') as date, SUM(total_biaya) as total 
+            SELECT DATE(tgl_transaksi) as date, SUM(total_biaya) as total 
             FROM transaksi 
             WHERE tgl_transaksi >= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY) 
             GROUP BY DATE(tgl_transaksi) 
@@ -457,7 +457,7 @@ app.get('/api/dashboard/analytics', authMiddleware, async (req, res) => {
             FROM detail_transaksi dt 
             JOIN layanan l ON dt.id_layanan = l.id_layanan 
             WHERE dt.jenis_item = 'Layanan' 
-            GROUP BY dt.id_layanan 
+            GROUP BY dt.id_layanan, l.nama_layanan 
             ORDER BY usage_count DESC 
             LIMIT 5
         `);
@@ -490,16 +490,69 @@ app.get('/api/owners', authMiddleware, async (req, res) => {
     }
 });
 
-// Create Owner
+// Create Owner (with auto-generated user account)
 app.post('/api/owners', authMiddleware, async (req, res) => {
     const { nama_pemilik, no_hp, alamat, email } = req.body;
+
+    if (!nama_pemilik || !email) {
+        return res.status(400).json({ message: 'Name and email are required' });
+    }
+
+    const connection = await db.getConnection();
     try {
-        const [result] = await db.query('INSERT INTO pemilik (nama_pemilik, no_hp, alamat, email) VALUES (?, ?, ?, ?)',
-            [nama_pemilik, no_hp, alamat, email]);
-        res.json({ message: 'Owner added', id: result.insertId });
+        await connection.beginTransaction();
+
+        // Generate username from name (lowercase, replace spaces with dots)
+        let username = nama_pemilik.toLowerCase().replace(/\s+/g, '.');
+
+        // Check if username exists, if so add number suffix
+        const [existing] = await connection.query('SELECT * FROM users WHERE username = ?', [username]);
+        if (existing.length > 0) {
+            // Add timestamp suffix to make it unique
+            username = `${username}.${Date.now().toString().slice(-4)}`;
+        }
+
+        // Check if email already exists
+        const [existingEmail] = await connection.query('SELECT * FROM pemilik WHERE email = ?', [email]);
+        if (existingEmail.length > 0) {
+            await connection.rollback();
+            return res.status(400).json({ message: 'Email already registered' });
+        }
+
+        // Generate default password
+        const defaultPassword = 'owner123';
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(defaultPassword, salt);
+
+        // Create user account
+        const [userResult] = await connection.query(
+            'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+            [username, hashedPassword, 'Pelanggan']
+        );
+        const userId = userResult.insertId;
+
+        // Create pemilik record linked to user
+        const [ownerResult] = await connection.query(
+            'INSERT INTO pemilik (id_user, nama_pemilik, no_hp, alamat, email) VALUES (?, ?, ?, ?, ?)',
+            [userId, nama_pemilik, no_hp, alamat, email]
+        );
+
+        await connection.commit();
+        res.json({
+            message: 'Owner added successfully',
+            id: ownerResult.insertId,
+            credentials: {
+                username: username,
+                password: defaultPassword,
+                info: 'Share these credentials with the owner so they can login and track their pets'
+            }
+        });
     } catch (err) {
-        console.error(err);
+        await connection.rollback();
+        console.error('Create owner error:', err);
         res.status(500).json({ error: 'Failed to add owner' });
+    } finally {
+        connection.release();
     }
 });
 

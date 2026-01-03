@@ -17,10 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const header = document.querySelector('.glass-header');
     window.addEventListener('scroll', () => {
         if (window.scrollY > 50) {
-            header.style.background = 'rgba(15, 23, 42, 0.9)';
+            header.style.background = 'rgba(226, 232, 240, 0.95)';
             header.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
         } else {
-            header.style.background = 'rgba(15, 23, 42, 0.7)';
+            header.style.background = 'rgba(240, 249, 255, 0.8)';
             header.style.boxShadow = 'none';
         }
     });

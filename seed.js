@@ -29,9 +29,10 @@ async function seed() {
 
         // 2. Staff (with email and alamat)
         await connection.query(`INSERT IGNORE INTO pegawai (id_user, nama_lengkap, jabatan, spesialisasi, no_hp, email, alamat) VALUES 
+            (1, 'Admin User', 'Staff', NULL, '081234567889', 'admin@pawwhisker.com', 'Jl. Admin No. 1'),
             (2, 'Dr. Sarah Johnson', 'Dokter Hewan', 'Surgery', '081234567890', 'sarah@pawwhisker.com', 'Jl. Veteriner No. 10'),
             (3, 'Maria Garcia', 'Staff', NULL, '081234567891', 'maria@pawwhisker.com', 'Jl. Klinik No. 5')`);
-        console.log('✅ Staff seeded (with email & address)');
+        console.log('✅ Staff seeded (Admin, Doctor, Receptionist with email & address)');
 
         // 3. Owner (linked to customer account)
         await connection.query(`INSERT IGNORE INTO pemilik (id_user, nama_pemilik, alamat, no_hp, email) VALUES 
