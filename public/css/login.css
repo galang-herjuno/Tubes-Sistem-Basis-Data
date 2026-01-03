@@ -69,7 +69,11 @@ body {
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: 0.5rem;
+<<<<<<< Updated upstream
     background: linear-gradient(to right, #818cf8, #c084fc);
+=======
+    background: #FACC15;
+>>>>>>> Stashed changes
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -171,8 +175,13 @@ select option {
 .btn-login {
     width: 100%;
     padding: 14px;
+<<<<<<< Updated upstream
     background: linear-gradient(to right, var(--primary-color), var(--primary-hover));
     color: white;
+=======
+    background: var(--primary-color);
+    color: black;
+>>>>>>> Stashed changes
     border: none;
     border-radius: 10px;
     font-size: 1rem;
