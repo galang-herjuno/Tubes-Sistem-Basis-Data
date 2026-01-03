@@ -2141,3 +2141,218 @@ window.togglePasswordVisibility = (inputId, iconId) => {
     }
 };
 
+// ==========================================
+// APPOINTMENT FORM LOGIC
+// ==========================================
+
+window.loadAppointmentFormData = async () => {
+    // 1. Populate Services (Fetch from API)
+    const serviceSelect = document.getElementById('apt-service');
+
+    if (serviceSelect) {
+        serviceSelect.innerHTML = '<option value="">Loading services...</option>';
+        try {
+            const res = await fetch('/api/services');
+            if (res.ok) {
+                const services = await res.json();
+                serviceSelect.innerHTML = '<option value="">Select Service</option>';
+                services.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id_layanan; // Value is ID
+                    opt.textContent = s.nama_layanan; // Text is Name
+                    serviceSelect.appendChild(opt);
+                });
+            } else {
+                serviceSelect.innerHTML = '<option value="">Failed to load services</option>';
+            }
+        } catch (err) {
+            console.error('Error loading services:', err);
+            serviceSelect.innerHTML = '<option value="">Error loading services</option>';
+        }
+
+        // Event Listener for Service Change -> Filter Staff
+        serviceSelect.onchange = () => {
+            // Get the text of the selected option to check for "Grooming"
+            const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
+            const serviceName = selectedOption ? selectedOption.textContent : '';
+            filterStaffByService(serviceName);
+        };
+    }
+
+    // 2. Populate Owners
+    const ownerSelect = document.getElementById('apt-owner');
+    if (ownerSelect) {
+        // If current user is 'Pelanggan', lock it to themselves
+        if (window.currentUserRole === 'Pelanggan') {
+            await loadCurrentUserAsOwner(ownerSelect);
+        } else {
+            // Admin/Resep/Dokter: Load all owners
+            await loadAllOwnersForDropdown(ownerSelect);
+        }
+
+        // Listener: When owner changes, load their pets
+        ownerSelect.onchange = () => loadPetsForOwner(ownerSelect.value);
+    }
+
+    // 3. Initial Staff Load (will be filtered later)
+    await loadStaffForDropdown();
+};
+
+async function loadStaffForDropdown() {
+    try {
+        const res = await fetch('/api/staff');
+        if (res.ok) {
+            window.allStaffCache = await res.json(); // Cache for filtering
+            // Initial render - show all allowed roles
+            filterStaffByService('');
+        }
+    } catch (err) {
+        console.error('Error loading staff:', err);
+    }
+}
+
+function filterStaffByService(serviceName) {
+    const doctorSelect = document.getElementById('apt-doctor');
+    if (!doctorSelect || !window.allStaffCache) return;
+
+    doctorSelect.innerHTML = '<option value="">Select Doctor/Groomer</option>';
+
+    let filteredStaff = [];
+
+    // Check if service name contains "Grooming" (case insensitive)
+    if (serviceName && serviceName.toLowerCase().includes('grooming')) {
+        // Show only Groomers
+        filteredStaff = window.allStaffCache.filter(s => s.jabatan === 'Groomer');
+    } else if (serviceName) {
+        // Any other service (Medical/Consultation/Vaccination) -> Show Doctors
+        filteredStaff = window.allStaffCache.filter(s => s.jabatan === 'Dokter Hewan');
+    } else {
+        // No service selected -> Show all eligible staff
+        filteredStaff = window.allStaffCache.filter(s =>
+            s.jabatan === 'Dokter Hewan' || s.jabatan === 'Groomer'
+        );
+    }
+
+    if (filteredStaff.length === 0) {
+        const uniqueTitle = (serviceName && serviceName.toLowerCase().includes('grooming')) ? 'Groomers' : 'Doctors';
+        doctorSelect.innerHTML = `<option value="">No ${uniqueTitle} available</option>`;
+    } else {
+        filteredStaff.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id_pegawai;
+            opt.textContent = `${s.nama_lengkap} (${s.jabatan})`;
+            doctorSelect.appendChild(opt);
+        });
+    }
+}
+
+async function loadAllOwnersForDropdown(selectEl) {
+    try {
+        const res = await fetch('/api/owners');
+        if (res.ok) {
+            const owners = await res.json();
+            selectEl.innerHTML = '<option value="">Select Owner</option>';
+            owners.forEach(o => {
+                const opt = document.createElement('option');
+                opt.value = o.id_pemilik;
+                opt.textContent = `${o.nama_pemilik} (${o.no_hp || '-'})`;
+                selectEl.appendChild(opt);
+            });
+            selectEl.disabled = false;
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function loadCurrentUserAsOwner(selectEl) {
+    try {
+        // Assuming /api/customer/profile endpoint returns owner details linked to user
+        const res = await fetch('/api/customer/profile');
+        if (res.ok) {
+            const owner = await res.json();
+            selectEl.innerHTML = `<option value="${owner.id_pemilik}" selected>${owner.nama_pemilik}</option>`;
+            selectEl.disabled = true; // Lock selection
+            loadPetsForOwner(owner.id_pemilik); // Auto load pets
+        }
+    } catch (err) {
+        console.error('Error loading current user owner profile:', err);
+    }
+}
+
+async function loadPetsForOwner(ownerId) {
+    const petSelect = document.getElementById('apt-pet');
+    if (!petSelect) return;
+
+    petSelect.innerHTML = '<option value="">Loading...</option>';
+    petSelect.disabled = true;
+
+    if (!ownerId) {
+        petSelect.innerHTML = '<option value="">Select Owner First</option>';
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/owners/${ownerId}/pets`);
+        if (res.ok) {
+            const pets = await res.json();
+            petSelect.innerHTML = '<option value="">Select Pet</option>';
+
+            if (pets.length === 0) {
+                petSelect.innerHTML = '<option value="">No pets registered</option>';
+            } else {
+                pets.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id_hewan;
+                    opt.textContent = p.nama_hewan;
+                    petSelect.appendChild(opt);
+                });
+                petSelect.disabled = false;
+            }
+        }
+    } catch (err) {
+        console.error(err);
+        petSelect.innerHTML = '<option value="">Error loading pets</option>';
+    }
+}
+
+// Handle Appointment Submission
+const appointmentForm = document.getElementById('appointmentForm');
+if (appointmentForm) {
+    appointmentForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const data = {
+            id_pemilik: document.getElementById('apt-owner').value,
+            id_hewan: document.getElementById('apt-pet').value,
+            id_pegawai: document.getElementById('apt-doctor').value, // Fixed: match backend 'id_pegawai'
+            tgl_kunjungan: document.getElementById('apt-date').value, // Fixed: match backend 'tgl_kunjungan'
+            // Combine Service + Complaint into 'keluhan' as backend expects 'keluhan'
+            keluhan: `[${document.getElementById('apt-service').options[document.getElementById('apt-service').selectedIndex].text}] ${document.getElementById('apt-complaint').value}`
+        };
+
+        try {
+            const res = await fetch('/api/appointments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await res.json();
+            if (res.ok) {
+                alert('✅ Appointment booked successfully!');
+                appointmentForm.reset();
+                // Reset dynamic dropdowns
+                document.getElementById('apt-pet').innerHTML = '<option value="">Select Owner First</option>';
+                document.getElementById('apt-pet').disabled = true;
+                window.switchSection('dashboard-view'); // Go back to dashboard
+            } else {
+                alert('❌ Error: ' + result.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('❌ Failed to book appointment');
+        }
+    });
+}
+

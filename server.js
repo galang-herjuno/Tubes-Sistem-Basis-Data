@@ -1013,6 +1013,7 @@ app.get('/api/billing/preview/:id_daftar', authMiddleware, async (req, res) => {
         const [appointment] = await db.query(`
             SELECT 
                 p.id_daftar,
+                p.keluhan_awal,
                 p.tgl_kunjungan,
                 p.status,
                 h.nama_hewan,
@@ -1042,18 +1043,36 @@ app.get('/api/billing/preview/:id_daftar', authMiddleware, async (req, res) => {
         let totalBiaya = 0;
         const items = [];
 
-        // Get service (Konsultasi Umum)
+        // Parse service from keluhan_awal (Format: [ServiceName] ...)
+        let serviceName = "Konsultasi Umum"; // Default
+        const keluhan = appointmentData.keluhan_awal || "";
+        const match = keluhan.match(/^\[(.*?)\]/);
+        if (match && match[1]) {
+            serviceName = match[1];
+        }
+
+        // Get service price from database
         const [service] = await db.query(
-            'SELECT id_layanan, nama_layanan, harga_dasar FROM layanan WHERE nama_layanan = "Konsultasi Umum" LIMIT 1'
+            'SELECT id_layanan, nama_layanan, harga_dasar FROM layanan WHERE nama_layanan = ? LIMIT 1',
+            [serviceName]
         );
 
-        if (service.length > 0) {
-            const hargaLayanan = parseFloat(service[0].harga_dasar);
+        // Fallback if specific service not found (e.g., changed name), try default
+        let selectedService = service[0];
+        if (!selectedService) {
+            const [defaultService] = await db.query(
+                'SELECT id_layanan, nama_layanan, harga_dasar FROM layanan WHERE nama_layanan = "Konsultasi Umum" LIMIT 1'
+            );
+            selectedService = defaultService[0];
+        }
+
+        if (selectedService) {
+            const hargaLayanan = parseFloat(selectedService.harga_dasar);
             totalBiaya += hargaLayanan;
             items.push({
                 jenis_item: 'Layanan',
-                nama: service[0].nama_layanan,
-                id_layanan: service[0].id_layanan,
+                nama: selectedService.nama_layanan,
+                id_layanan: selectedService.id_layanan,
                 id_barang: null,
                 harga: hargaLayanan,
                 qty: 1,
@@ -1222,11 +1241,11 @@ app.post('/api/billing/generate', authMiddleware, async (req, res) => {
 
         // Get appointment details
         const [appointment] = await connection.query(`
-            SELECT p.id_daftar, p.id_hewan, h.id_pemilik, p.id_pegawai, p.status
+            SELECT p.id_daftar, p.id_hewan, h.id_pemilik, p.id_pegawai, p.status, p.keluhan_awal
             FROM pendaftaran p
             JOIN hewan h ON p.id_hewan = h.id_hewan
             WHERE p.id_daftar = ?
-        `, [id_daftar]);
+            `, [id_daftar]);
 
         if (appointment.length === 0) {
             await connection.rollback();
@@ -1243,21 +1262,39 @@ app.post('/api/billing/generate', authMiddleware, async (req, res) => {
         let totalBiaya = 0;
         const items = [];
 
-        // Get service price (default to Konsultasi Umum)
+        // Parse service from keluhan_awal
+        let serviceName = "Konsultasi Umum";
+        const keluhan = appointment[0].keluhan_awal || "";
+        const match = keluhan.match(/^\[(.*?)\]/);
+        if (match && match[1]) {
+            serviceName = match[1];
+        }
+
+        // Get service price 
         const [service] = await connection.query(
-            'SELECT id_layanan, harga_dasar FROM layanan WHERE nama_layanan = "Konsultasi Umum" LIMIT 1'
+            'SELECT id_layanan, harga_dasar FROM layanan WHERE nama_layanan = ? LIMIT 1',
+            [serviceName]
         );
 
+        // Fallback 
+        let selectedService = service[0];
+        if (!selectedService) {
+            const [defaultService] = await connection.query(
+                'SELECT id_layanan, harga_dasar FROM layanan WHERE nama_layanan = "Konsultasi Umum" LIMIT 1'
+            );
+            selectedService = defaultService[0];
+        }
+
         // Add service to items
-        if (service.length > 0) {
-            totalBiaya += service[0].harga_dasar;
+        if (selectedService) {
+            totalBiaya += selectedService.harga_dasar;
             items.push({
                 jenis_item: 'Layanan',
-                id_layanan: service[0].id_layanan,
+                id_layanan: selectedService.id_layanan,
                 id_barang: null,
-                harga_saat_ini: service[0].harga_dasar,
+                harga_saat_ini: selectedService.harga_dasar,
                 qty: 1,
-                subtotal: service[0].harga_dasar
+                subtotal: selectedService.harga_dasar
             });
         }
 
@@ -1268,7 +1305,7 @@ app.post('/api/billing/generate', authMiddleware, async (req, res) => {
             JOIN resep_obat ro ON rm.id_rekam = ro.id_rekam
             JOIN barang b ON ro.id_barang = b.id_barang
             WHERE rm.id_daftar = ?
-        `, [id_daftar]);
+            `, [id_daftar]);
 
         // Add prescriptions to items
         for (const rx of prescriptions) {
@@ -1286,17 +1323,17 @@ app.post('/api/billing/generate', authMiddleware, async (req, res) => {
 
         // Create transaction
         const [txResult] = await connection.query(`
-            INSERT INTO transaksi (id_daftar, id_pemilik, tgl_transaksi, total_biaya, diskon, metode_bayar)
-            VALUES (?, ?, NOW(), ?, 0, 'Cash')
-        `, [id_daftar, id_pemilik, totalBiaya]);
+            INSERT INTO transaksi(id_daftar, id_pemilik, tgl_transaksi, total_biaya, diskon, metode_bayar)
+        VALUES(?, ?, NOW(), ?, 0, 'Cash')
+            `, [id_daftar, id_pemilik, totalBiaya]);
 
         const transactionId = txResult.insertId;
 
         // Insert transaction details with price snapshots
         for (const item of items) {
             await connection.query(`
-                INSERT INTO detail_transaksi (id_transaksi, jenis_item, id_layanan, id_barang, harga_saat_ini, qty, subtotal)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO detail_transaksi(id_transaksi, jenis_item, id_layanan, id_barang, harga_saat_ini, qty, subtotal)
+        VALUES(?, ?, ?, ?, ?, ?, ?)
             `, [transactionId, item.jenis_item, item.id_layanan, item.id_barang, item.harga_saat_ini, item.qty, item.subtotal]);
         }
 
@@ -1402,13 +1439,13 @@ app.get('/api/patient-history', authMiddleware, async (req, res) => {
 
         let query = `
             SELECT rm.*, h.nama_hewan, h.jenis_hewan, pm.nama_pemilik,
-                peg.nama_lengkap as dokter, p.tgl_kunjungan
+            peg.nama_lengkap as dokter, p.tgl_kunjungan
             FROM rekam_medis rm
             JOIN pendaftaran p ON rm.id_daftar = p.id_daftar
             JOIN hewan h ON p.id_hewan = h.id_hewan
             JOIN pemilik pm ON h.id_pemilik = pm.id_pemilik
             JOIN pegawai peg ON p.id_pegawai = peg.id_pegawai
-        `;
+            `;
 
         if (search) {
             query += ` WHERE h.nama_hewan LIKE '%${search}%' OR pm.nama_pemilik LIKE '%${search}%' OR rm.diagnosa LIKE '%${search}%'`;
@@ -1530,7 +1567,7 @@ app.get('/api/customer/profile', authMiddleware, async (req, res) => {
             // Create pemilik profile automatically
             const [result] = await db.query(
                 'INSERT INTO pemilik (id_user, nama_pemilik, email) VALUES (?, ?, ?)',
-                [userId, user[0].username, `${user[0].username}@example.com`]
+                [userId, user[0].username, `${user[0].username} @example.com`]
             );
 
             [pemilik] = await db.query('SELECT * FROM pemilik WHERE id_pemilik = ?', [result.insertId]);
@@ -1590,13 +1627,13 @@ app.get('/api/customer/dashboard', authMiddleware, async (req, res) => {
             SELECT COUNT(*) as count FROM pendaftaran p
             JOIN hewan h ON p.id_hewan = h.id_hewan
             WHERE h.id_pemilik = ? AND p.tgl_kunjungan >= NOW() AND p.status != 'Batal'
-        `, [idPemilik]);
+            `, [idPemilik]);
 
         // Count pending payments (if you have a status field)
         const [payments] = await db.query(`
             SELECT COUNT(*) as count FROM transaksi
             WHERE id_pemilik = ? AND tgl_transaksi >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-        `, [idPemilik]);
+            `, [idPemilik]);
 
         res.json({
             totalPets: pets[0].count,
@@ -1639,7 +1676,7 @@ app.post('/api/customer/pets', authMiddleware, async (req, res) => {
 
             const [result] = await db.query(
                 'INSERT INTO pemilik (id_user, nama_pemilik, email) VALUES (?, ?, ?)',
-                [userId, user[0].username, `${user[0].username}@example.com`]
+                [userId, user[0].username, `${user[0].username} @example.com`]
             );
 
             [pemilik] = await db.query('SELECT id_pemilik FROM pemilik WHERE id_pemilik = ?', [result.insertId]);
@@ -1671,7 +1708,7 @@ app.get('/api/customer/pets/:id/medical-records', authMiddleware, async (req, re
             SELECT h.* FROM hewan h
             JOIN pemilik p ON h.id_pemilik = p.id_pemilik
             WHERE h.id_hewan = ? AND p.id_user = ?
-        `, [petId, userId]);
+            `, [petId, userId]);
 
         if (pet.length === 0) {
             return res.status(403).json({ error: 'Unauthorized' });
@@ -1685,7 +1722,7 @@ app.get('/api/customer/pets/:id/medical-records', authMiddleware, async (req, re
             JOIN pegawai peg ON pd.id_pegawai = peg.id_pegawai
             WHERE pd.id_hewan = ?
             ORDER BY rm.tgl_periksa DESC
-        `, [petId]);
+                `, [petId]);
 
         // Get prescriptions for each record
         for (let record of records) {
@@ -1722,7 +1759,7 @@ app.get('/api/customer/appointments', authMiddleware, async (req, res) => {
             JOIN pegawai peg ON p.id_pegawai = peg.id_pegawai
             WHERE h.id_pemilik = ?
             ORDER BY p.tgl_kunjungan DESC
-        `, [pemilik[0].id_pemilik]);
+                `, [pemilik[0].id_pemilik]);
 
         res.json(appointments);
     } catch (err) {
@@ -1749,7 +1786,7 @@ app.get('/api/customer/appointments/next', authMiddleware, async (req, res) => {
             WHERE h.id_pemilik = ? AND p.tgl_kunjungan >= NOW() AND p.status != 'Batal'
             ORDER BY p.tgl_kunjungan ASC
             LIMIT 1
-        `, [pemilik[0].id_pemilik]);
+            `, [pemilik[0].id_pemilik]);
 
         res.json(appointment[0] || null);
     } catch (err) {
@@ -1769,15 +1806,15 @@ app.get('/api/customer/transactions', authMiddleware, async (req, res) => {
         }
 
         const [transactions] = await db.query(`
-            SELECT t.*, 
-                (SELECT GROUP_CONCAT(CONCAT(dt.qty, 'x ', COALESCE(l.nama_layanan, b.nama_barang)) SEPARATOR ', ')
+            SELECT t.*,
+            (SELECT GROUP_CONCAT(CONCAT(dt.qty, 'x ', COALESCE(l.nama_layanan, b.nama_barang)) SEPARATOR ', ')
                     FROM detail_transaksi dt
                     LEFT JOIN layanan l ON dt.id_layanan = l.id_layanan
                     LEFT JOIN barang b ON dt.id_barang = b.id_barang
                     WHERE dt.id_transaksi = t.id_transaksi) as items
             FROM transaksi t
             WHERE t.id_pemilik = ?
-            ORDER BY t.tgl_transaksi DESC
+    ORDER BY t.tgl_transaksi DESC
         `, [pemilik[0].id_pemilik]);
 
         res.json(transactions);
@@ -1798,7 +1835,7 @@ app.get('/api/customer/transactions/:id', authMiddleware, async (req, res) => {
             SELECT t.* FROM transaksi t
             JOIN pemilik p ON t.id_pemilik = p.id_pemilik
             WHERE t.id_transaksi = ? AND p.id_user = ?
-        `, [transactionId, userId]);
+    `, [transactionId, userId]);
 
         if (transaction.length === 0) {
             return res.status(403).json({ error: 'Unauthorized' });
@@ -1806,14 +1843,14 @@ app.get('/api/customer/transactions/:id', authMiddleware, async (req, res) => {
 
         // Get transaction details
         const [details] = await db.query(`
-            SELECT dt.*, 
-                l.nama_layanan,
-                b.nama_barang, b.satuan
+            SELECT dt.*,
+    l.nama_layanan,
+    b.nama_barang, b.satuan
             FROM detail_transaksi dt
             LEFT JOIN layanan l ON dt.id_layanan = l.id_layanan
             LEFT JOIN barang b ON dt.id_barang = b.id_barang
             WHERE dt.id_transaksi = ?
-        `, [transactionId]);
+    `, [transactionId]);
 
         res.json({
             transaction: transaction[0],
