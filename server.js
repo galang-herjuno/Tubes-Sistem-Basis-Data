@@ -369,18 +369,30 @@ app.get('/api/dashboard/stats', authMiddleware, async (req, res) => {
     }
 });
 
-// 2. Live Queue
+// 2. Live Queue (with doctor filtering support)
 app.get('/api/dashboard/queue', authMiddleware, async (req, res) => {
     try {
-        const query = `
-            SELECT p.id_daftar, h.nama_hewan, peg.nama_lengkap as dokter, 
-                DATE_FORMAT(p.tgl_kunjungan, '%H:%i') as jam, p.status 
+        const userId = req.session.userId;
+        const role = req.session.role;
+
+        let query = `
+            SELECT p.id_daftar, h.nama_hewan, h.id_hewan, peg.nama_lengkap as dokter, 
+                peg.id_pegawai, pm.nama_pemilik, pm.no_hp,
+                DATE_FORMAT(p.tgl_kunjungan, '%H:%i') as jam, p.status, p.keluhan_awal 
             FROM pendaftaran p 
             JOIN hewan h ON p.id_hewan = h.id_hewan 
+            JOIN pemilik pm ON h.id_pemilik = pm.id_pemilik
             JOIN pegawai peg ON p.id_pegawai = peg.id_pegawai 
-            WHERE DATE(p.tgl_kunjungan) = CURRENT_DATE 
-            ORDER BY p.tgl_kunjungan ASC
+            WHERE DATE(p.tgl_kunjungan) = CURRENT_DATE
         `;
+
+        // Filter for doctors - only show their own queue
+        if (role === 'Dokter') {
+            query += ` AND peg.id_user = ${userId}`;
+        }
+
+        query += ` ORDER BY p.tgl_kunjungan ASC`;
+
         const [rows] = await db.query(query);
         res.json(rows);
     } catch (err) {
@@ -696,8 +708,8 @@ app.post('/api/inventory', authMiddleware, async (req, res) => {
     }
 });
 
-// 7. Transactions
-// Get Recent Transactions
+// 7. Transactions (Enhanced with CRUD)
+// Get Recent Transactions with Details
 app.get('/api/transactions', authMiddleware, async (req, res) => {
     try {
         const query = `
@@ -712,6 +724,251 @@ app.get('/api/transactions', authMiddleware, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to fetch transactions' });
+    }
+});
+
+// Get Transaction Details
+app.get('/api/transactions/:id/details', authMiddleware, async (req, res) => {
+    try {
+        const [transaction] = await db.query(
+            'SELECT t.*, p.nama_pemilik, p.no_hp FROM transaksi t LEFT JOIN pemilik p ON t.id_pemilik = p.id_pemilik WHERE t.id_transaksi = ?',
+            [req.params.id]
+        );
+
+        const [details] = await db.query(`
+            SELECT dt.*, 
+                l.nama_layanan,
+                b.nama_barang, b.satuan
+            FROM detail_transaksi dt
+            LEFT JOIN layanan l ON dt.id_layanan = l.id_layanan
+            LEFT JOIN barang b ON dt.id_barang = b.id_barang
+            WHERE dt.id_transaksi = ?
+        `, [req.params.id]);
+
+        res.json({ transaction: transaction[0], details });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch transaction details' });
+    }
+});
+
+// Create Transaction
+app.post('/api/transactions', authMiddleware, async (req, res) => {
+    const { id_pemilik, id_daftar, metode_bayar, items, diskon } = req.body;
+
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // Calculate total
+        let total = 0;
+        for (const item of items) {
+            total += item.harga * item.qty;
+        }
+        total -= (diskon || 0);
+
+        // Create transaction
+        const [txResult] = await connection.query(
+            'INSERT INTO transaksi (id_pemilik, id_daftar, metode_bayar, total_biaya, diskon) VALUES (?, ?, ?, ?, ?)',
+            [id_pemilik || null, id_daftar || null, metode_bayar, total, diskon || 0]
+        );
+
+        const txId = txResult.insertId;
+
+        // Insert details
+        for (const item of items) {
+            const subtotal = item.harga * item.qty;
+            await connection.query(
+                'INSERT INTO detail_transaksi (id_transaksi, jenis_item, id_layanan, id_barang, harga_saat_ini, qty, subtotal) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [txId, item.jenis, item.id_layanan || null, item.id_barang || null, item.harga, item.qty, subtotal]
+            );
+
+            // Update stock if item is barang
+            if (item.jenis === 'Barang' && item.id_barang) {
+                await connection.query(
+                    'UPDATE barang SET stok = stok - ? WHERE id_barang = ?',
+                    [item.qty, item.id_barang]
+                );
+            }
+        }
+
+        await connection.commit();
+        res.json({ message: 'Transaction created successfully', id: txId });
+    } catch (err) {
+        await connection.rollback();
+        console.error('Create transaction error:', err);
+        res.status(500).json({ error: 'Failed to create transaction' });
+    } finally {
+        connection.release();
+    }
+});
+
+// Delete Transaction
+app.delete('/api/transactions/:id', authMiddleware, async (req, res) => {
+    if (req.session.role !== 'Admin' && req.session.role !== 'Resepsionis') {
+        return res.status(403).json({ message: 'Access denied' });
+    }
+
+    try {
+        await db.query('DELETE FROM transaksi WHERE id_transaksi = ?', [req.params.id]);
+        res.json({ message: 'Transaction deleted' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to delete transaction' });
+    }
+});
+
+// Get Services (for transaction form)
+app.get('/api/services', authMiddleware, async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM layanan ORDER BY nama_layanan');
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch services' });
+    }
+});
+
+// Get Medicines (Obat only)
+app.get('/api/medicines', authMiddleware, async (req, res) => {
+    try {
+        const [rows] = await db.query("SELECT * FROM barang WHERE kategori = 'Obat' AND stok > 0 ORDER BY nama_barang");
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch medicines' });
+    }
+});
+
+// ==========================================
+// MEDICAL WORKSPACE API (Doctor)
+// ==========================================
+
+// Create Medical Record
+app.post('/api/medical-records', authMiddleware, async (req, res) => {
+    const { id_daftar, diagnosa, tindakan, catatan_dokter, prescriptions } = req.body;
+
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // Create medical record
+        const [recordResult] = await connection.query(
+            'INSERT INTO rekam_medis (id_daftar, diagnosa, tindakan, catatan_dokter) VALUES (?, ?, ?, ?)',
+            [id_daftar, diagnosa, tindakan, catatan_dokter]
+        );
+
+        const recordId = recordResult.insertId;
+
+        // Add prescriptions if any
+        if (prescriptions && prescriptions.length > 0) {
+            for (const rx of prescriptions) {
+                await connection.query(
+                    'INSERT INTO resep_obat (id_rekam, id_barang, jumlah, aturan_pakai) VALUES (?, ?, ?, ?)',
+                    [recordId, rx.id_barang, rx.jumlah, rx.aturan_pakai]
+                );
+
+                // Update stock
+                await connection.query(
+                    'UPDATE barang SET stok = stok - ? WHERE id_barang = ?',
+                    [rx.jumlah, rx.id_barang]
+                );
+            }
+        }
+
+        // Update appointment status to 'Selesai'
+        await connection.query(
+            "UPDATE pendaftaran SET status = 'Selesai' WHERE id_daftar = ?",
+            [id_daftar]
+        );
+
+        await connection.commit();
+        res.json({ message: 'Medical record created successfully', id: recordId });
+    } catch (err) {
+        await connection.rollback();
+        console.error('Create medical record error:', err);
+        res.status(500).json({ error: 'Failed to create medical record' });
+    } finally {
+        connection.release();
+    }
+});
+
+// Get Patient History (for doctors)
+app.get('/api/patient-history', authMiddleware, async (req, res) => {
+    try {
+        const { search } = req.query;
+
+        let query = `
+            SELECT rm.*, h.nama_hewan, h.jenis_hewan, pm.nama_pemilik,
+                peg.nama_lengkap as dokter, p.tgl_kunjungan
+            FROM rekam_medis rm
+            JOIN pendaftaran p ON rm.id_daftar = p.id_daftar
+            JOIN hewan h ON p.id_hewan = h.id_hewan
+            JOIN pemilik pm ON h.id_pemilik = pm.id_pemilik
+            JOIN pegawai peg ON p.id_pegawai = peg.id_pegawai
+        `;
+
+        if (search) {
+            query += ` WHERE h.nama_hewan LIKE '%${search}%' OR pm.nama_pemilik LIKE '%${search}%' OR rm.diagnosa LIKE '%${search}%'`;
+        }
+
+        query += ` ORDER BY rm.tgl_periksa DESC LIMIT 50`;
+
+        const [rows] = await db.query(query);
+
+        // Get prescriptions for each record
+        for (let record of rows) {
+            const [prescriptions] = await db.query(`
+                SELECT ro.*, b.nama_barang, b.satuan
+                FROM resep_obat ro
+                JOIN barang b ON ro.id_barang = b.id_barang
+                WHERE ro.id_rekam = ?
+            `, [record.id_rekam]);
+            record.prescriptions = prescriptions;
+        }
+
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch patient history' });
+    }
+});
+
+// Get Doctor Profile (for settings)
+app.get('/api/doctor/profile', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        const [rows] = await db.query(
+            'SELECT * FROM pegawai WHERE id_user = ?',
+            [userId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Doctor profile not found' });
+        }
+
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch doctor profile' });
+    }
+});
+
+// Update Doctor Profile
+app.put('/api/doctor/profile', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        const { no_hp } = req.body;
+
+        await db.query(
+            'UPDATE pegawai SET no_hp = ? WHERE id_user = ?',
+            [no_hp, userId]
+        );
+
+        res.json({ message: 'Profile updated successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to update profile' });
     }
 });
 

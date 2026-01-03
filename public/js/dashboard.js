@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
     let currentUsername = '';
+    window.currentUserRole = ''; // Store globally for access
 
     // 1. Fetch User Info & Stats
     try {
@@ -11,8 +12,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (userNameEl) userNameEl.textContent = user.username;
             if (userRoleEl) userRoleEl.textContent = user.role;
 
-            // Store username and update delete confirmation display
+            // Store username and role globally
             currentUsername = user.username;
+            window.currentUserRole = user.role;
             const confirmDisplay = document.getElementById('confirm-username-display');
             if (confirmDisplay) confirmDisplay.textContent = currentUsername;
 
@@ -56,8 +58,17 @@ function updateUIBasedOnRole(role) {
         receptionElements.forEach(el => el.style.display = 'block');
     } else if (role === 'Dokter') {
         doctorElements.forEach(el => el.style.display = 'block');
+        // Hide Revenue Today for doctors
+        const revenueCard = document.querySelector('.stat-card:nth-child(2)');
+        if (revenueCard) revenueCard.style.display = 'none';
     } else if (role === 'Resepsionis') {
         receptionElements.forEach(el => el.style.display = 'block');
+        // Enable Inventory for Resepsionis
+        const inventoryLink = document.querySelector('.menu a[href*="Inventory"]');
+        if (inventoryLink && inventoryLink.parentElement) {
+            inventoryLink.parentElement.classList.add('role-resepsionis');
+            inventoryLink.parentElement.style.display = 'block';
+        }
     } else if (role === 'Pelanggan') {
         // Limited view for Pelanggan
     }
@@ -91,6 +102,10 @@ function setupNavigation() {
                 window.switchSection('patients-view');
                 link.classList.add('active');
                 loadPatients();
+            } else if (text.includes('Medical Records')) {
+                window.switchSection('medical-workspace-view');
+                link.classList.add('active');
+                loadMedicalWorkspace();
             } else if (text.includes('Staff')) {
                 window.switchSection('staff-view');
                 link.classList.add('active');
@@ -110,6 +125,7 @@ function setupNavigation() {
             } else if (text.includes('Settings')) {
                 window.switchSection('settings-view');
                 link.classList.add('active');
+                loadSettings();
             }
         });
     });
@@ -942,13 +958,25 @@ async function loadInventory() {
 
         items.forEach(i => {
             const tr = document.createElement('tr');
+            const isLowStock = i.stok < 5;
+
+            // Apply glowing border for low stock
+            if (isLowStock) {
+                tr.style.borderLeft = '3px solid #ef4444';
+                tr.style.boxShadow = '0 0 10px rgba(239, 68, 68, 0.3)';
+                tr.style.animation = 'pulse 2s infinite';
+            }
+
             tr.innerHTML = `
                 <td>${i.nama_barang}</td>
                 <td>${i.kategori}</td>
-                <td>${i.stok}</td>
+                <td style="font-weight: ${isLowStock ? 'bold' : 'normal'}; color: ${isLowStock ? '#ef4444' : 'inherit'}">${i.stok}</td>
                 <td>${formatCurrency(i.harga_satuan)} / ${i.satuan}</td>
                 <td>
-                    ${i.stok < 5 ? '<span class="status-badge status-menunggu">Low Stock</span>' : '<span class="status-badge status-selesai">OK</span>'}
+                    ${isLowStock ?
+                    '<span class="status-badge status-batal" style="box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);">Low Stock</span>' :
+                    '<span class="status-badge status-selesai">OK</span>'}
+                </td>
             `;
             tbody.appendChild(tr);
         });
@@ -1062,6 +1090,12 @@ async function loadTransactions() {
         const tbody = document.querySelector('#transactions-view table tbody');
         if (!tbody) return;
         tbody.innerHTML = '';
+
+        if (txs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:2rem;">No transactions yet</td></tr>';
+            return;
+        }
+
         txs.forEach(t => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -1070,8 +1104,324 @@ async function loadTransactions() {
                 <td>${t.nama_pemilik || 'Guest'}</td>
                 <td>${t.metode_bayar}</td>
                 <td style="font-weight:bold">${formatCurrency(t.total_biaya)}</td>
+                <td>
+                    <button class="btn-xs" onclick="viewTransactionDetails(${t.id_transaksi})" 
+                            style="color:var(--primary-color); cursor:pointer; padding:0.5rem 1rem; background:rgba(139, 92, 246, 0.1); border:1px solid var(--primary-color); border-radius:5px;">
+                        <i class="fa-solid fa-eye"></i> View
+                    </button>
+                    ${window.currentUserRole === 'Admin' ? `
+                        <button class="btn-xs" onclick="deleteTransaction(${t.id_transaksi})" 
+                                style="color:#ef4444; cursor:pointer; padding:0.5rem 1rem; background:rgba(239, 68, 68, 0.1); border:1px solid #ef4444; border-radius:5px; margin-left:0.5rem;">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    ` : ''}
+                </td>
             `;
             tbody.appendChild(tr);
         });
     }
 }
+
+// View Transaction Details
+window.viewTransactionDetails = async (txId) => {
+    try {
+        const res = await fetch(`/api/transactions/${txId}/details`);
+        if (res.ok) {
+            const { transaction, details } = await res.json();
+
+            let detailsHtml = '<table style="width:100%; margin-top:1rem;"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead><tbody>';
+            details.forEach(d => {
+                const itemName = d.nama_layanan || d.nama_barang;
+                detailsHtml += `
+                    <tr>
+                        <td>${itemName}</td>
+                        <td>${d.qty}</td>
+                        <td>${formatCurrency(d.harga_saat_ini)}</td>
+                        <td>${formatCurrency(d.subtotal)}</td>
+                    </tr>
+                `;
+            });
+            detailsHtml += '</tbody></table>';
+
+            alert(`Transaction #${txId}\nCustomer: ${transaction.nama_pemilik || 'Guest'}\nDate: ${new Date(transaction.tgl_transaksi).toLocaleString()}\nPayment: ${transaction.metode_bayar}\nTotal: ${formatCurrency(transaction.total_biaya)}\n\n${detailsHtml}`);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Failed to load transaction details');
+    }
+};
+
+// Delete Transaction
+window.deleteTransaction = async (txId) => {
+    if (confirm('Are you sure you want to delete this transaction?')) {
+        try {
+            const res = await fetch(`/api/transactions/${txId}`, { method: 'DELETE' });
+            const result = await res.json();
+            alert(result.message);
+            if (res.ok) loadTransactions();
+        } catch (err) {
+            console.error(err);
+            alert('Failed to delete transaction');
+        }
+    }
+};
+
+// ==========================================
+// MEDICAL WORKSPACE (Doctor View)
+// ==========================================
+
+async function loadMedicalWorkspace() {
+    // Load doctor's queue
+    const queueRes = await fetch('/api/dashboard/queue');
+    if (queueRes.ok) {
+        const queue = await queueRes.json();
+        const queueContainer = document.getElementById('doctor-queue-list');
+        if (queueContainer) {
+            queueContainer.innerHTML = '';
+
+            if (queue.length === 0) {
+                queueContainer.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:2rem;">No appointments for today</p>';
+            } else {
+                queue.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'queue-card';
+                    card.style.cssText = 'background:rgba(255,255,255,0.05); padding:1.5rem; border-radius:10px; border:1px solid var(--glass-border); margin-bottom:1rem; cursor:pointer; transition:all 0.3s;';
+                    card.onmouseover = () => card.style.borderColor = 'var(--primary-color)';
+                    card.onmouseout = () => card.style.borderColor = 'var(--glass-border)';
+
+                    const statusColors = {
+                        'Menunggu': '#f59e0b',
+                        'Diperiksa': '#3b82f6',
+                        'Selesai': '#10b981',
+                        'Batal': '#ef4444'
+                    };
+
+                    card.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:1rem;">
+                            <div>
+                                <h4 style="margin:0 0 0.5rem 0; color:white;">${item.nama_hewan}</h4>
+                                <p style="margin:0; color:#94a3b8; font-size:0.9rem;">Owner: ${item.nama_pemilik} • ${item.no_hp}</p>
+                            </div>
+                            <span class="status-badge" style="background:${statusColors[item.status]}20; color:${statusColors[item.status]}; border:1px solid ${statusColors[item.status]};">
+                                ${item.status}
+                            </span>
+                        </div>
+                        <p style="margin:0.5rem 0; color:#e2e8f0; font-size:0.9rem;"><i class="fa-solid fa-clock"></i> ${item.jam}</p>
+                        ${item.keluhan_awal ? `<p style="margin:0.5rem 0; color:#94a3b8; font-size:0.85rem;"><strong>Complaint:</strong> ${item.keluhan_awal}</p>` : ''}
+                        <button onclick="openMedicalRecordForm(${item.id_daftar}, '${item.nama_hewan}', '${item.nama_pemilik}')" 
+                                class="cta-button" style="margin-top:1rem; width:100%; font-size:0.9rem;">
+                            <i class="fa-solid fa-stethoscope"></i> Create Medical Record
+                        </button>
+                    `;
+                    queueContainer.appendChild(card);
+                });
+            }
+        }
+    }
+
+    // Load patient history
+    loadPatientHistory();
+}
+
+// Open Medical Record Form
+window.openMedicalRecordForm = async (id_daftar, petName, ownerName) => {
+    const modal = document.getElementById('medicalRecordModal');
+    if (!modal) return;
+
+    document.getElementById('mr-pet-name').textContent = petName;
+    document.getElementById('mr-owner-name').textContent = ownerName;
+    document.getElementById('mr-id-daftar').value = id_daftar;
+
+    // Load medicines for prescription
+    const medRes = await fetch('/api/medicines');
+    if (medRes.ok) {
+        const medicines = await medRes.json();
+        window.availableMedicines = medicines;
+    }
+
+    // Clear prescription list
+    document.getElementById('prescription-list').innerHTML = '';
+    window.prescriptions = [];
+
+    modal.classList.remove('hidden');
+};
+
+// Add Prescription
+window.addPrescription = () => {
+    const select = document.getElementById('medicine-select');
+    const qty = document.getElementById('medicine-qty');
+    const usage = document.getElementById('medicine-usage');
+
+    if (!select.value || !qty.value) {
+        alert('Please select medicine and quantity');
+        return;
+    }
+
+    const medicine = window.availableMedicines.find(m => m.id_barang == select.value);
+    if (!medicine) return;
+
+    window.prescriptions.push({
+        id_barang: medicine.id_barang,
+        nama_barang: medicine.nama_barang,
+        jumlah: parseInt(qty.value),
+        aturan_pakai: usage.value
+    });
+
+    updatePrescriptionList();
+
+    // Reset form
+    select.value = '';
+    qty.value = '';
+    usage.value = '';
+};
+
+// Update Prescription List Display
+function updatePrescriptionList() {
+    const list = document.getElementById('prescription-list');
+    list.innerHTML = '';
+
+    window.prescriptions.forEach((rx, index) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'background:rgba(139, 92, 246, 0.1); padding:0.8rem; border-radius:5px; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;';
+        item.innerHTML = `
+            <span>${rx.nama_barang} - ${rx.jumlah}x ${rx.aturan_pakai ? '(' + rx.aturan_pakai + ')' : ''}</span>
+            <button onclick="removePrescription(${index})" style="color:#ef4444; background:none; border:none; cursor:pointer;">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        `;
+        list.appendChild(item);
+    });
+}
+
+// Remove Prescription
+window.removePrescription = (index) => {
+    window.prescriptions.splice(index, 1);
+    updatePrescriptionList();
+};
+
+// Submit Medical Record
+window.submitMedicalRecord = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+
+    const data = {
+        id_daftar: document.getElementById('mr-id-daftar').value,
+        diagnosa: document.getElementById('mr-diagnosa').value,
+        tindakan: document.getElementById('mr-tindakan').value,
+        catatan_dokter: document.getElementById('mr-catatan').value,
+        prescriptions: window.prescriptions || []
+    };
+
+    try {
+        const res = await fetch('/api/medical-records', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        alert(result.message);
+
+        if (res.ok) {
+            closeModal('medicalRecordModal');
+            form.reset();
+            loadMedicalWorkspace(); // Refresh
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Failed to create medical record');
+    }
+};
+
+// Load Patient History
+async function loadPatientHistory(search = '') {
+    const res = await fetch(`/api/patient-history?search=${search}`);
+    if (res.ok) {
+        const history = await res.json();
+        const container = document.getElementById('patient-history-list');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        if (history.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:2rem;">No medical records found</p>';
+            return;
+        }
+
+        history.forEach(record => {
+            const card = document.createElement('div');
+            card.style.cssText = 'background:rgba(255,255,255,0.03); padding:1.5rem; border-radius:10px; border:1px solid var(--glass-border); margin-bottom:1rem;';
+
+            let prescriptionHtml = '';
+            if (record.prescriptions && record.prescriptions.length > 0) {
+                prescriptionHtml = '<div style="margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.1);"><strong>Prescriptions:</strong><ul style="margin:0.5rem 0;">';
+                record.prescriptions.forEach(rx => {
+                    prescriptionHtml += `<li>${rx.nama_barang} - ${rx.jumlah}${rx.satuan} (${rx.aturan_pakai || 'As needed'})</li>`;
+                });
+                prescriptionHtml += '</ul></div>';
+            }
+
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                    <h4 style="margin:0; color:white;">${record.nama_hewan} (${record.jenis_hewan})</h4>
+                    <span style="color:#94a3b8; font-size:0.9rem;">${new Date(record.tgl_periksa).toLocaleDateString()}</span>
+                </div>
+                <p style="margin:0.5rem 0; color:#94a3b8; font-size:0.9rem;">Owner: ${record.nama_pemilik} • Doctor: ${record.dokter}</p>
+                <p style="margin:0.5rem 0; color:#e2e8f0;"><strong>Diagnosis:</strong> ${record.diagnosa || '-'}</p>
+                <p style="margin:0.5rem 0; color:#e2e8f0;"><strong>Treatment:</strong> ${record.tindakan || '-'}</p>
+                ${record.catatan_dokter ? `<p style="margin:0.5rem 0; color:#94a3b8; font-size:0.9rem;"><strong>Notes:</strong> ${record.catatan_dokter}</p>` : ''}
+                ${prescriptionHtml}
+            `;
+            container.appendChild(card);
+        });
+    }
+}
+
+// Search Patient History
+window.searchPatientHistory = () => {
+    const search = document.getElementById('patient-search').value;
+    loadPatientHistory(search);
+};
+
+// ==========================================
+// SETTINGS (Doctor Profile)
+// ==========================================
+
+async function loadSettings() {
+    if (window.currentUserRole === 'Dokter') {
+        // Load doctor profile
+        const res = await fetch('/api/doctor/profile');
+        if (res.ok) {
+            const profile = await res.json();
+            const profileSection = document.getElementById('doctor-profile-section');
+            if (profileSection) {
+                profileSection.style.display = 'block';
+                document.getElementById('doctor-no-hp').value = profile.no_hp || '';
+            }
+        }
+    }
+}
+
+// Update Doctor Profile
+window.updateDoctorProfile = async (e) => {
+    e.preventDefault();
+
+    const data = {
+        no_hp: document.getElementById('doctor-no-hp').value
+    };
+
+    try {
+        const res = await fetch('/api/doctor/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        alert(result.message);
+    } catch (err) {
+        console.error(err);
+        alert('Failed to update profile');
+    }
+};
+

@@ -38,7 +38,10 @@
 
             <!-- Staff: Admin Only -->
             <li class="role-admin"><a href="#"><i class="fa-solid fa-user-doctor"></i> Staff Management</a></li>
-            <li class="role-admin"><a href="#"><i class="fa-solid fa-boxes-stacked"></i> Inventory</a></li>
+
+            <!-- Inventory: Admin & Resepsionis -->
+            <li class="role-admin role-resepsionis"><a href="#"><i class="fa-solid fa-boxes-stacked"></i> Inventory</a>
+            </li>
 
             <!-- Transactions: Admin & Recep -->
             <li class="role-admin role-resepsionis"><a href="#"><i class="fa-solid fa-cash-register"></i>
@@ -342,6 +345,39 @@
             </div>
         </div>
 
+        <!-- Medical Workspace View (Doctor Only) -->
+        <div id="medical-workspace-view" class="section-content app-section role-dokter" style="display:none;">
+            <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr; gap:1.5rem;">
+                <!-- Left: Live Queue + Medical Record Form -->
+                <div>
+                    <div class="card" style="margin-bottom:1.5rem;">
+                        <div class="card-header">
+                            <h3>My Queue Today</h3>
+                            <span class="status-badge status-diperiksa">Live</span>
+                        </div>
+                        <div id="doctor-queue-list" style="max-height:500px; overflow-y:auto;">
+                            <p style="text-align:center; color:#94a3b8; padding:2rem;">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Patient History -->
+                <div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Patient History</h3>
+                            <input type="text" id="patient-search" placeholder="Search patient..."
+                                onkeyup="searchPatientHistory()"
+                                style="padding:0.5rem 1rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px; width:200px;">
+                        </div>
+                        <div id="patient-history-list" style="max-height:600px; overflow-y:auto;">
+                            <p style="text-align:center; color:#94a3b8; padding:2rem;">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Transactions View -->
         <div id="transactions-view" class="section-content app-section" style="display:none;">
             <div class="card">
@@ -356,6 +392,7 @@
                             <th>Owner</th>
                             <th>Method</th>
                             <th>Total</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -375,6 +412,21 @@
                     <p style="margin-bottom: 1rem; color: #94a3b8; font-size: 0.9rem;">To secure your account, regular
                         password updates are recommended.</p>
                     <button id="openChangePassModalBtn" class="cta-button" style="width: 100%;">Change Password</button>
+                </div>
+
+                <!-- Doctor Profile Section -->
+                <div id="doctor-profile-section"
+                    style="display:none; margin-bottom:2rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 2rem;">
+                    <h4 style="margin-bottom: 1rem; color:var(--primary-color);">Doctor Profile</h4>
+                    <form onsubmit="updateDoctorProfile(event)">
+                        <div class="input-group">
+                            <label>Phone Number</label>
+                            <input type="text" id="doctor-no-hp" required
+                                style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px;">
+                        </div>
+                        <button type="submit" class="cta-button" style="width:100%; margin-top:1rem;">Update
+                            Profile</button>
+                    </form>
                 </div>
 
                 <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 2rem;">
@@ -605,6 +657,86 @@
             </div>
         </div>
     </div>
+
+    <!-- Medical Record Modal (Doctor) -->
+    <div id="medicalRecordModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>Create Medical Record</h3>
+                <button class="close-modal" onclick="closeModal('medicalRecordModal')">&times;</button>
+            </div>
+            <div style="background:rgba(139, 92, 246, 0.1); padding:1rem; border-radius:8px; margin-bottom:1.5rem;">
+                <p style="margin:0; color:#e2e8f0;"><strong>Pet:</strong> <span id="mr-pet-name"></span></p>
+                <p style="margin:0.5rem 0 0 0; color:#94a3b8;"><strong>Owner:</strong> <span id="mr-owner-name"></span>
+                </p>
+            </div>
+            <form id="medicalRecordForm" onsubmit="submitMedicalRecord(event)">
+                <input type="hidden" id="mr-id-daftar">
+
+                <div class="input-group">
+                    <label>Diagnosis</label>
+                    <textarea id="mr-diagnosa" rows="3" required
+                        style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px;"></textarea>
+                </div>
+
+                <div class="input-group">
+                    <label>Treatment / Actions Taken</label>
+                    <textarea id="mr-tindakan" rows="3" required
+                        style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px;"></textarea>
+                </div>
+
+                <div class="input-group">
+                    <label>Doctor's Notes</label>
+                    <textarea id="mr-catatan" rows="2"
+                        style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px;"></textarea>
+                </div>
+
+                <!-- Prescription Section -->
+                <div style="border-top:1px solid var(--glass-border); padding-top:1.5rem; margin-top:1.5rem;">
+                    <h4 style="margin-bottom:1rem; color:var(--accent-color);">Prescriptions</h4>
+
+                    <div style="display:grid; grid-template-columns: 2fr 1fr 2fr auto; gap:0.5rem; margin-bottom:1rem;">
+                        <select id="medicine-select" class="status-select" style="padding:0.8rem;">
+                            <option value="">Select Medicine</option>
+                        </select>
+                        <input type="number" id="medicine-qty" min="1" placeholder="Qty"
+                            style="padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px;">
+                        <input type="text" id="medicine-usage" placeholder="Usage instructions (e.g., 2x daily)"
+                            style="padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px;">
+                        <button type="button" onclick="addPrescription()" class="cta-button"
+                            style="padding:0.8rem 1.5rem; white-space:nowrap;">
+                            <i class="fa-solid fa-plus"></i> Add
+                        </button>
+                    </div>
+
+                    <div id="prescription-list" style="margin-top:1rem;">
+                        <!-- Prescriptions will be added here dynamically -->
+                    </div>
+                </div>
+
+                <button type="submit" class="cta-button" style="width:100%; margin-top:1.5rem;">
+                    <i class="fa-solid fa-save"></i> Save Medical Record
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Load medicines into select when modal opens
+        document.addEventListener('DOMContentLoaded', async () => {
+            const medRes = await fetch('/api/medicines');
+            if (medRes.ok) {
+                const medicines = await medRes.json();
+                const select = document.getElementById('medicine-select');
+                medicines.forEach(med => {
+                    const opt = document.createElement('option');
+                    opt.value = med.id_barang;
+                    opt.textContent = `${med.nama_barang} (Stock: ${med.stok})`;
+                    select.appendChild(opt);
+                });
+            }
+        });
+    </script>
     <script src="js/dashboard.js"></script>
 </body>
 
