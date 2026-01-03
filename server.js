@@ -369,31 +369,68 @@ app.get('/api/dashboard/stats', authMiddleware, async (req, res) => {
     }
 });
 
-// 2. Live Queue (with doctor filtering support)
+// 2. Live Queue (with doctor filtering support and pagination)
 app.get('/api/dashboard/queue', authMiddleware, async (req, res) => {
     try {
         const userId = req.session.userId;
         const role = req.session.role;
 
+        // Query Params
+        const dateFilter = req.query.date || 'today';
+        const statusFilter = req.query.status || 'all'; // 'active', 'completed', 'all'
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = parseInt(req.query.offset) || 0;
+
         let query = `
             SELECT p.id_daftar, h.nama_hewan, h.id_hewan, peg.nama_lengkap as dokter, 
                 peg.id_pegawai, pm.nama_pemilik, pm.no_hp,
-                DATE_FORMAT(p.tgl_kunjungan, '%H:%i') as jam, p.status, p.keluhan_awal 
+                DATE_FORMAT(p.tgl_kunjungan, '%H:%i') as jam, 
+                DATE_FORMAT(p.tgl_kunjungan, '%Y-%m-%d') as tanggal,
+                p.status, p.keluhan_awal,
+                t.id_transaksi
             FROM pendaftaran p 
             JOIN hewan h ON p.id_hewan = h.id_hewan 
             JOIN pemilik pm ON h.id_pemilik = pm.id_pemilik
             JOIN pegawai peg ON p.id_pegawai = peg.id_pegawai 
-            WHERE DATE(p.tgl_kunjungan) = CURRENT_DATE
+            LEFT JOIN transaksi t ON p.id_daftar = t.id_daftar
+            WHERE 1=1
         `;
 
-        // Filter for doctors - only show their own queue
-        if (role === 'Dokter') {
-            query += ` AND peg.id_user = ${userId}`;
+        const params = [];
+
+        // Date Filter
+        if (dateFilter === 'today') {
+            query += ` AND DATE(p.tgl_kunjungan) = CURRENT_DATE`;
+        } else if (dateFilter === 'tomorrow') {
+            query += ` AND DATE(p.tgl_kunjungan) = DATE_ADD(CURRENT_DATE, INTERVAL 1 DAY)`;
+        } else if (dateFilter === 'week') {
+            query += ` AND YEARWEEK(p.tgl_kunjungan, 1) = YEARWEEK(CURRENT_DATE, 1)`;
+        } else if (dateFilter === 'month') {
+            query += ` AND MONTH(p.tgl_kunjungan) = MONTH(CURRENT_DATE) AND YEAR(p.tgl_kunjungan) = YEAR(CURRENT_DATE)`;
+        } else if (dateFilter === 'all') {
+            // No date filter
         }
 
-        query += ` ORDER BY p.tgl_kunjungan ASC`;
+        // Status Filter
+        if (statusFilter === 'active') {
+            query += ` AND p.status IN ('Menunggu', 'Diperiksa')`;
+        } else if (statusFilter === 'completed') {
+            query += ` AND p.status IN ('Selesai', 'Batal')`;
+        }
 
-        const [rows] = await db.query(query);
+        // Doctor Filter
+        if (role === 'Dokter') {
+            query += ` AND peg.id_user = ?`;
+            params.push(userId);
+        }
+
+        // Sort priority: 
+        // 1. Unpaid first (t.id_transaksi IS NULL) -> DESC because true(1) > false(0)
+        // 2. Then by appointment time
+        query += ` ORDER BY (t.id_transaksi IS NULL) DESC, p.tgl_kunjungan ASC LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+
+        const [rows] = await db.query(query, params);
         res.json(rows);
     } catch (err) {
         console.error(err);

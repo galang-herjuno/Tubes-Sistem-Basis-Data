@@ -318,57 +318,132 @@ async function loadDashboardStats() {
     if (document.getElementById('salesChart')) fetchAnalytics();
 }
 
-async function fetchQueue() {
-    const res = await fetch('/api/dashboard/queue');
-    if (res.ok) {
-        const queue = await res.json();
-        const tbody = document.getElementById('queue-body');
-        if (!tbody) return;
-        tbody.innerHTML = '';
+// Queue State
+let queueOffset = 0;
+const queueLimit = 10;
+let queueStatus = 'active'; // 'active' or 'completed'
 
-        if (queue.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8">No appointments today</td></tr>';
-            return;
-        }
+window.setQueueTab = (status) => {
+    queueStatus = status;
+    queueOffset = 0;
 
-        const isAdmin = window.currentUserRole === 'Admin';
-        const isResepsionis = window.currentUserRole === 'Resepsionis';
-        const canGenerateBill = isAdmin || isResepsionis;
+    // Update Button Styles
+    const btnActive = document.getElementById('tab-active');
+    const btnCompleted = document.getElementById('tab-completed');
 
-        queue.forEach(item => {
-            const tr = document.createElement('tr');
+    if (status === 'active') {
+        btnActive.style.background = 'var(--primary-color)';
+        btnActive.style.color = 'var(--bg-color)';
+        btnCompleted.style.background = 'transparent';
+        btnCompleted.style.color = 'var(--text-muted)';
+    } else {
+        btnCompleted.style.background = 'var(--primary-color)';
+        btnCompleted.style.color = 'var(--bg-color)';
+        btnActive.style.background = 'transparent';
+        btnActive.style.color = 'var(--text-muted)';
+    }
 
-            // Generate Bill button for completed appointments
-            let billButton = '';
-            if (canGenerateBill && item.status === 'Selesai') {
-                billButton = `
-                    <button onclick="generateBill(${item.id_daftar}, '${item.nama_hewan}')" 
-                            class="btn-xs" 
-                            style="background:#f59e0b; color:#1e293b; font-weight:600; padding:0.5rem 0.75rem; border-radius:6px; border:none; cursor:pointer; margin-left:0.5rem; transition:all 0.3s ease;" 
-                            onmouseover="this.style.background='#d97706'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(245, 158, 11, 0.4)'"
-                            onmouseout="this.style.background='#f59e0b'; this.style.transform='translateY(0)'; this.style.boxShadow='none'"
-                            title="Generate Bill">
-                        <i class="fa-solid fa-file-invoice-dollar"></i> Generate Bill
-                    </button>
-                `;
+    fetchQueue(false);
+};
+
+window.reloadQueue = () => {
+    queueOffset = 0;
+    fetchQueue(false);
+}
+
+window.loadMoreQueue = () => {
+    queueOffset += queueLimit;
+    fetchQueue(true);
+}
+
+async function fetchQueue(append = false) {
+    const dateFilterEl = document.getElementById('queue-date-filter');
+    const dateFilter = dateFilterEl ? dateFilterEl.value : 'today';
+    const loadMoreBtn = document.getElementById('queue-load-more');
+
+    try {
+        const res = await fetch(`/api/dashboard/queue?date=${dateFilter}&status=${queueStatus}&limit=${queueLimit}&offset=${queueOffset}`);
+        if (res.ok) {
+            const queue = await res.json();
+            const tbody = document.getElementById('queue-body');
+            if (!tbody) return;
+
+            if (!append) tbody.innerHTML = '';
+
+            if (queue.length === 0 && !append) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding: 2rem;">No appointments found for this filter</td></tr>';
+                if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+                return;
             }
 
-            tr.innerHTML = `
-                <td style="font-weight: 500">${item.nama_hewan}</td>
-                <td>${item.dokter}</td>
-                <td>${item.jam}</td>
-                <td>
-                    <select class="status-select" onchange="updateStatus(${item.id_daftar}, this.value)">
-                        <option value="Menunggu" ${item.status === 'Menunggu' ? 'selected' : ''}>Menunggu</option>
-                        <option value="Diperiksa" ${item.status === 'Diperiksa' ? 'selected' : ''}>Diperiksa</option>
-                        <option value="Selesai" ${item.status === 'Selesai' ? 'selected' : ''}>Selesai</option>
-                        <option value="Batal" ${item.status === 'Batal' ? 'selected' : ''}>Batal</option>
-                    </select>
-                    ${billButton}
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+            // check if we should show load more
+            if (loadMoreBtn) {
+                if (queue.length < queueLimit) {
+                    // No more data to load
+                    loadMoreBtn.style.display = 'none';
+                } else {
+                    loadMoreBtn.style.display = 'inline-block';
+                }
+            }
+
+            const isAdmin = window.currentUserRole === 'Admin';
+            const isResepsionis = window.currentUserRole === 'Resepsionis';
+            const canGenerateBill = isAdmin || isResepsionis;
+
+            queue.forEach(item => {
+                const tr = document.createElement('tr');
+
+                // Generate Bill button logic
+                let billButton = '';
+                if (canGenerateBill && item.status === 'Selesai') {
+                    if (item.id_transaksi) {
+                        billButton = `
+                            <button class="btn-xs" 
+                                    style="background:rgba(255,255,255,0.05); color:#22c55e; font-weight:600; padding:0.4rem 0.6rem; border-radius:6px; border:1px solid rgba(34, 197, 94, 0.3); cursor:default; margin-left:0.5rem;" 
+                                    disabled
+                                    title="Bill already generated">
+                                <i class="fa-solid fa-check-circle"></i> Paid
+                            </button>
+                        `;
+                    } else {
+                        billButton = `
+                            <button onclick="generateBill(${item.id_daftar}, '${item.nama_hewan}')" 
+                                    class="btn-xs" 
+                                    style="background:#f59e0b; color:#1e293b; font-weight:600; padding:0.4rem 0.6rem; border-radius:6px; border:none; cursor:pointer; margin-left:0.5rem; transition:all 0.3s ease;" 
+                                    onmouseover="this.style.background='#d97706'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(245, 158, 11, 0.4)'"
+                                    onmouseout="this.style.background='#f59e0b'; this.style.transform='translateY(0)'; this.style.boxShadow='none'"
+                                    title="Generate Bill">
+                                <i class="fa-solid fa-file-invoice-dollar"></i> Bill
+                            </button>
+                        `;
+                    }
+                }
+
+                // Show date if filter is not 'today'
+                let timeDisplay = item.jam;
+                if (dateFilter !== 'today') {
+                    timeDisplay += `<br><span style="font-size:0.75rem; color:var(--text-muted);">${item.tanggal}</span>`;
+                }
+
+                tr.innerHTML = `
+                    <td style="font-weight: 500">${item.nama_hewan}</td>
+                    <td>${item.dokter}</td>
+                    <td>${timeDisplay}</td>
+                    <td>
+                        <select class="status-select" onchange="updateStatus(${item.id_daftar}, this.value)" style="padding:0.3rem; font-size:0.85rem;">
+                            <option value="Menunggu" ${item.status === 'Menunggu' ? 'selected' : ''}>Menunggu</option>
+                            <option value="Diperiksa" ${item.status === 'Diperiksa' ? 'selected' : ''}>Diperiksa</option>
+                            <option value="Selesai" ${item.status === 'Selesai' ? 'selected' : ''}>Selesai</option>
+                            <option value="Batal" ${item.status === 'Batal' ? 'selected' : ''}>Batal</option>
+                        </select>
+                        ${billButton}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (err) {
+        console.error('Fetch queue error:', err);
     }
 }
 
@@ -1614,6 +1689,8 @@ window.confirmGenerateBill = async (appointmentId) => {
 
 // Show Bill Success Modal
 function showBillSuccessModal(totalBiaya, transactionId, petName) {
+    const amount = parseFloat(totalBiaya);
+
     const modalHTML = `
         <div style="background:rgba(30, 41, 59, 0.95); backdrop-filter:blur(10px); border:1px solid rgba(245, 158, 11, 0.3); border-radius:12px; padding:2rem; max-width:500px; margin:2rem auto; box-shadow:0 20px 60px rgba(0,0,0,0.5); text-align:center;">
             <div style="width:80px; height:80px; background:#f59e0b; border-radius:50%; margin:0 auto 1.5rem; display:flex; align-items:center; justify-content:center; animation:scaleIn 0.3s ease;">
@@ -1635,7 +1712,7 @@ function showBillSuccessModal(totalBiaya, transactionId, petName) {
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span style="color:#94a3b8; font-size:1.1rem;">Total Amount:</span>
-                    <span style="color:#f59e0b; font-weight:700; font-size:1.5rem;">Rp ${totalBiaya.toLocaleString('id-ID')}</span>
+                    <span style="color:#f59e0b; font-weight:700; font-size:1.5rem;">${formatCurrency(amount)}</span>
                 </div>
             </div>
             

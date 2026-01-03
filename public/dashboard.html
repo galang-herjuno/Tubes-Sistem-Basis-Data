@@ -123,9 +123,35 @@
                 <div class="left-col">
                     <!-- Live Queue -->
                     <div class="card" style="margin-bottom: 1.5rem;">
-                        <div class="card-header">
-                            <h3>Live Queue</h3>
-                            <span class="status-badge status-diperiksa">Live</span>
+                        <div class="card-header" style="flex-wrap: wrap; gap: 1rem; justify-content: space-between;">
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <h3>Live Queue</h3>
+                                <span class="status-badge status-diperiksa" style="font-size:0.7rem;">Live</span>
+                            </div>
+                            <div style="display:flex; gap:0.8rem; align-items:center;">
+                                <!-- Date Filter -->
+                                <select id="queue-date-filter" onchange="window.reloadQueue()" class="status-select"
+                                    style="padding:0.4rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); color:var(--text-color); border-radius:6px; font-size:0.85rem;">
+                                    <option value="today">Hari Ini</option>
+                                    <option value="tomorrow">Besok</option>
+                                    <option value="week">Minggu Ini</option>
+                                    <option value="month">Bulan Ini</option>
+                                    <option value="all">Semua</option>
+                                </select>
+
+                                <!-- Status Filter Toggle -->
+                                <div
+                                    style="display:flex; background:rgba(255,255,255,0.1); border-radius:8px; padding:3px; border:1px solid rgba(255,255,255,0.1);">
+                                    <button onclick="window.setQueueTab('active')" id="tab-active"
+                                        style="border:none; padding:0.4rem 0.8rem; border-radius:6px; font-size:0.8rem; font-weight:600; cursor:pointer; background:var(--primary-color); color:var(--bg-color); transition:all 0.2s;">
+                                        Antrian
+                                    </button>
+                                    <button onclick="window.setQueueTab('completed')" id="tab-completed"
+                                        style="border:none; padding:0.4rem 0.8rem; border-radius:6px; font-size:0.8rem; font-weight:600; cursor:pointer; background:transparent; color:var(--text-muted); transition:all 0.2s;">
+                                        Selesai
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <table>
                             <thead>
@@ -138,10 +164,17 @@
                             </thead>
                             <tbody id="queue-body">
                                 <tr>
-                                    <td colspan="4" style="text-align:center; color:#94a3b8">No appointments today</td>
+                                    <td colspan="4" style="text-align:center; color:#94a3b8">Loading...</td>
                                 </tr>
                             </tbody>
                         </table>
+                        <div
+                            style="text-align:center; margin-top:1rem; padding-top:0.5rem; border-top:1px solid rgba(255,255,255,0.05);">
+                            <button id="queue-load-more" onclick="window.loadMoreQueue()"
+                                style="background:transparent; border:1px solid var(--glass-border); color:var(--text-muted); padding:0.5rem 1rem; border-radius:6px; cursor:pointer; font-size:0.85rem; display:none; transition:all 0.2s;">
+                                Tampilkan Lebih Banyak <i class="fa-solid fa-chevron-down"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Sales Chart -->
