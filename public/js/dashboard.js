@@ -548,30 +548,30 @@ window.viewOwnerDetails = async (ownerId) => {
         // Build content
         content.innerHTML = `
             <!-- Owner Information Card -->
-            <div style="background:linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%); 
-                        padding:2rem; border-radius:15px; border:1px solid rgba(139, 92, 246, 0.3); margin-bottom:2rem;">
+            <div style="background:rgba(139, 92, 246, 0.05); 
+                        padding:2rem; border-radius:15px; border:1px solid rgba(139, 92, 246, 0.2); margin-bottom:2rem;">
                 <div style="display:grid; grid-template-columns: auto 1fr; gap:2rem; align-items:center;">
-                    <div style="width:100px; height:100px; background:linear-gradient(135deg, var(--primary-color), var(--accent-color)); 
+                    <div style="width:100px; height:100px; background:var(--primary-color); 
                                 border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 30px rgba(139, 92, 246, 0.3);">
-                        <i class="fa-solid fa-user" style="font-size:3rem; color:white;"></i>
+                        <i class="fa-solid fa-user" style="font-size:3rem; color:var(--text-color);"></i>
                     </div>
                     <div>
-                        <h2 style="margin:0 0 0.5rem 0; color:white; font-size:1.8rem;">${owner.nama_pemilik}</h2>
+                        <h2 style="margin:0 0 0.5rem 0; color:var(--text-color); font-size:1.8rem;">${owner.nama_pemilik}</h2>
                         <div style="display:grid; gap:0.5rem; margin-top:1rem;">
-                            <p style="margin:0; color:#e2e8f0; display:flex; align-items:center; gap:0.5rem;">
-                                <i class="fa-solid fa-envelope" style="color:var(--accent-color); width:20px;"></i>
+                            <p style="margin:0; color:var(--text-color); display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fa-solid fa-envelope" style="color:var(--primary-color); width:20px;"></i>
                                 <span>${owner.email || 'Not provided'}</span>
                             </p>
-                            <p style="margin:0; color:#e2e8f0; display:flex; align-items:center; gap:0.5rem;">
-                                <i class="fa-solid fa-phone" style="color:var(--accent-color); width:20px;"></i>
+                            <p style="margin:0; color:var(--text-color); display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fa-solid fa-phone" style="color:var(--primary-color); width:20px;"></i>
                                 <span>${owner.no_hp || 'Not provided'}</span>
                             </p>
-                            <p style="margin:0; color:#e2e8f0; display:flex; align-items:center; gap:0.5rem;">
-                                <i class="fa-solid fa-location-dot" style="color:var(--accent-color); width:20px;"></i>
+                            <p style="margin:0; color:var(--text-color); display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fa-solid fa-location-dot" style="color:var(--primary-color); width:20px;"></i>
                                 <span>${owner.alamat || 'Not provided'}</span>
                             </p>
-                            <p style="margin:0; color:#e2e8f0; display:flex; align-items:center; gap:0.5rem;">
-                                <i class="fa-solid fa-calendar" style="color:var(--accent-color); width:20px;"></i>
+                            <p style="margin:0; color:var(--text-color); display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fa-solid fa-calendar" style="color:var(--primary-color); width:20px;"></i>
                                 <span>Member since ${new Date(owner.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
                             </p>
                         </div>
@@ -581,48 +581,48 @@ window.viewOwnerDetails = async (ownerId) => {
             
             <!-- Pets Section -->
             <div>
-                <h3 style="margin:0 0 1rem 0; color:white; display:flex; align-items:center; gap:0.5rem;">
+                <h3 style="margin:0 0 1rem 0; color:var(--text-color); display:flex; align-items:center; gap:0.5rem;">
                     <i class="fa-solid fa-paw" style="color:var(--primary-color);"></i>
                     Registered Pets (${pets.length})
                 </h3>
                 
                 ${pets.length === 0 ? `
-                    <div style="text-align:center; padding:3rem; background:rgba(255,255,255,0.03); border-radius:10px; border:1px dashed var(--glass-border);">
+                    <div style="text-align:center; padding:3rem; background:rgba(0,0,0,0.02); border-radius:10px; border:1px dashed var(--glass-border);">
                         <i class="fa-solid fa-paw" style="font-size:3rem; color:#94a3b8; opacity:0.3; margin-bottom:1rem;"></i>
                         <p style="color:#94a3b8; margin:0;">No pets registered yet</p>
                     </div>
                 ` : `
                     <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:1rem;">
                         ${pets.map(pet => `
-                            <div style="background:rgba(255,255,255,0.05); padding:1.5rem; border-radius:12px; 
-                                        border:1px solid var(--glass-border); transition:all 0.3s ease;
+                            <div style="background:white; padding:1.5rem; border-radius:12px; 
+                                        border:1px solid #e2e8f0; transition:all 0.3s ease; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
                                         hover:border-color:var(--primary-color); hover:transform:translateY(-2px);">
                                 <div style="text-align:center; margin-bottom:1rem;">
                                     <div style="width:60px; height:60px; background:var(--primary-color); 
                                                 border-radius:50%; display:flex; align-items:center; justify-content:center; 
-                                                margin:0 auto; box-shadow:0 5px 15px rgba(139, 92, 246, 0.3);">
+                                                margin:0 auto; box-shadow:0 5px 15px rgba(245, 158, 11, 0.2);">
                                         <i class="fa-solid fa-${pet.jenis_hewan === 'Kucing' ? 'cat' : pet.jenis_hewan === 'Anjing' ? 'dog' : 'paw'}" 
-                                           style="font-size:1.8rem; color:white;"></i>
+                                           style="font-size:1.8rem; color:var(--text-color);"></i>
                                     </div>
                                 </div>
-                                <h4 style="text-align:center; margin:0 0 0.5rem 0; color:white; font-size:1.1rem;">${pet.nama_hewan}</h4>
-                                <p style="text-align:center; color:#94a3b8; margin:0 0 1rem 0; font-size:0.9rem;">
+                                <h4 style="text-align:center; margin:0 0 0.5rem 0; color:var(--text-color); font-size:1.1rem;">${pet.nama_hewan}</h4>
+                                <p style="text-align:center; color:#64748b; margin:0 0 1rem 0; font-size:0.9rem;">
                                     ${pet.jenis_hewan}${pet.ras ? ' • ' + pet.ras : ''}
                                 </p>
-                                <div style="padding-top:1rem; border-top:1px solid rgba(255,255,255,0.1);">
-                                    <p style="margin:0.25rem 0; color:#e2e8f0; font-size:0.85rem; display:flex; align-items:center; gap:0.5rem;">
-                                        <i class="fa-solid fa-venus-mars" style="color:var(--accent-color); width:16px;"></i>
+                                <div style="padding-top:1rem; border-top:1px solid #f1f5f9;">
+                                    <p style="margin:0.25rem 0; color:#334155; font-size:0.85rem; display:flex; align-items:center; gap:0.5rem;">
+                                        <i class="fa-solid fa-venus-mars" style="color:var(--primary-color); width:16px;"></i>
                                         ${pet.gender}
                                     </p>
                                     ${pet.tgl_lahir ? `
-                                        <p style="margin:0.25rem 0; color:#e2e8f0; font-size:0.85rem; display:flex; align-items:center; gap:0.5rem;">
-                                            <i class="fa-solid fa-cake-candles" style="color:var(--accent-color); width:16px;"></i>
+                                        <p style="margin:0.25rem 0; color:#334155; font-size:0.85rem; display:flex; align-items:center; gap:0.5rem;">
+                                            <i class="fa-solid fa-cake-candles" style="color:var(--primary-color); width:16px;"></i>
                                             ${calculatePetAge(pet.tgl_lahir)}
                                         </p>
                                     ` : ''}
                                     ${pet.berat ? `
-                                        <p style="margin:0.25rem 0; color:#e2e8f0; font-size:0.85rem; display:flex; align-items:center; gap:0.5rem;">
-                                            <i class="fa-solid fa-weight-scale" style="color:var(--accent-color); width:16px;"></i>
+                                        <p style="margin:0.25rem 0; color:#334155; font-size:0.85rem; display:flex; align-items:center; gap:0.5rem;">
+                                            <i class="fa-solid fa-weight-scale" style="color:var(--primary-color); width:16px;"></i>
                                             ${pet.berat} kg
                                         </p>
                                     ` : ''}
@@ -1824,14 +1824,14 @@ async function loadMedicalWorkspace() {
                     card.innerHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:1rem;">
                             <div>
-                                <h4 style="margin:0 0 0.5rem 0; color:white;">${item.nama_hewan}</h4>
+                                <h4 style="margin:0 0 0.5rem 0; color:var(--primary-color);">${item.nama_hewan}</h4>
                                 <p style="margin:0; color:#94a3b8; font-size:0.9rem;">Owner: ${item.nama_pemilik} • ${item.no_hp}</p>
                             </div>
                             <span class="status-badge" style="background:${statusColors[item.status]}20; color:${statusColors[item.status]}; border:1px solid ${statusColors[item.status]};">
                                 ${item.status}
                             </span>
                         </div>
-                        <p style="margin:0.5rem 0; color:#e2e8f0; font-size:0.9rem;"><i class="fa-solid fa-clock"></i> ${item.jam}</p>
+                        <p style="margin:0.5rem 0; color:var(--primary-color); font-size:0.9rem;"><i class="fa-solid fa-clock"></i> ${item.jam}</p>
                         ${item.keluhan_awal ? `<p style="margin:0.5rem 0; color:#94a3b8; font-size:0.85rem;"><strong>Complaint:</strong> ${item.keluhan_awal}</p>` : ''}
                         <button onclick="openMedicalRecordForm(${item.id_daftar}, '${item.nama_hewan}', '${item.nama_pemilik}')" 
                                 class="cta-button" style="margin-top:1rem; width:100%; font-size:0.9rem;">
@@ -2047,6 +2047,22 @@ window.updateDoctorProfile = async (e) => {
     } catch (err) {
         console.error(err);
         alert('Failed to update profile');
+    }
+};
+
+// Toggle Password Visibility
+window.togglePasswordVisibility = (inputId, iconId) => {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye');
     }
 };
 

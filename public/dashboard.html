@@ -524,7 +524,15 @@
                     </div>
                     <div class="input-group">
                         <label>Password</label>
-                        <input type="password" name="password" required>
+                        <div style="position: relative;">
+                            <input type="password" name="password" id="add-staff-password" required
+                                style="width: 100%; padding-right: 40px;">
+                            <button type="button"
+                                onclick="togglePasswordVisibility('add-staff-password', 'toggle-password-icon')"
+                                style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-color);">
+                                <i class="fa-solid fa-eye" id="toggle-password-icon"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <button type="submit" class="cta-button" style="width:100%; margin-top:1rem;">Create Staff
@@ -805,8 +813,9 @@
                 <button class="close-modal" onclick="closeModal('medicalRecordModal')">&times;</button>
             </div>
             <div style="background:rgba(139, 92, 246, 0.1); padding:1rem; border-radius:8px; margin-bottom:1.5rem;">
-                <p style="margin:0; color:#e2e8f0;"><strong>Pet:</strong> <span id="mr-pet-name"></span></p>
-                <p style="margin:0.5rem 0 0 0; color:#94a3b8;"><strong>Owner:</strong> <span id="mr-owner-name"></span>
+                <p style="margin:0; color:var(--text-color);"><strong>Pet:</strong> <span id="mr-pet-name"></span></p>
+                <p style="margin:0.5rem 0 0 0; color:var(--text-color);"><strong>Owner:</strong> <span
+                        id="mr-owner-name"></span>
                 </p>
             </div>
             <form id="medicalRecordForm" onsubmit="submitMedicalRecord(event)">
@@ -839,9 +848,9 @@
                             <option value="">Select Medicine</option>
                         </select>
                         <input type="number" id="medicine-qty" min="1" placeholder="Qty"
-                            style="padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px;">
+                            style="padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:var(--text-color); border-radius:5px;">
                         <input type="text" id="medicine-usage" placeholder="Usage instructions (e.g., 2x daily)"
-                            style="padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px;">
+                            style="padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:var(--text-color); border-radius:5px;">
                         <button type="button" onclick="addPrescription()" class="cta-button"
                             style="padding:0.8rem 1.5rem; white-space:nowrap;">
                             <i class="fa-solid fa-plus"></i> Add
