@@ -60,11 +60,7 @@ body {
     position: fixed;
     top: 0;
     width: 100%;
-<<<<<<< HEAD
     background: rgba(255, 255, 255, 0.1);
-=======
-    background: rgba(240, 249, 255, 0.8);
->>>>>>> parent of 3dfdf56 (Merge branch 'Repair')
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--glass-border);
     z-index: 1000;
@@ -145,14 +141,7 @@ body {
 }
 
 .gradient-text {
-<<<<<<< HEAD
     color: var(--primary-color);
-=======
-    background: linear-gradient(to right, var(--secondary-color), var(--accent-color));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
->>>>>>> parent of 3dfdf56 (Merge branch 'Repair')
 }
 
 .hero-text p {
