@@ -296,12 +296,6 @@ body {
     padding: 2rem;
     border-radius: 16px;
     border: 1px solid var(--glass-border);
-    transition: transform 0.3s, border-color 0.3s;
-}
-
-.feature-card:hover {
-    transform: translateY(-5px);
-    border-color: var(--primary-color);
 }
 
 .feature-card h3 {
