@@ -1128,6 +1128,73 @@ app.get('/api/billing/preview/:id_daftar', authMiddleware, async (req, res) => {
     }
 });
 
+// ========================================
+// MEDICAL RECORDS
+// ========================================
+
+// Add Medical Record with Prescriptions & Stock Check
+app.post('/api/medical-records', authMiddleware, async (req, res) => {
+    const { id_daftar, diagnosa, tindakan, catatan_dokter, prescriptions } = req.body;
+    const userRole = req.session.role;
+
+    if (userRole !== 'Dokter' && userRole !== 'Admin') {
+        return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // Insert Rekam Medis
+        const [rmResult] = await connection.query(
+            'INSERT INTO rekam_medis (id_daftar, tgl_periksa, diagnosa, tindakan, catatan_dokter) VALUES (?, NOW(), ?, ?, ?)',
+            [id_daftar, diagnosa, tindakan, catatan_dokter]
+        );
+        const idRekam = rmResult.insertId;
+
+        // Process Prescriptions
+        if (prescriptions && prescriptions.length > 0) {
+            for (const rx of prescriptions) {
+                // Check stock & lock row
+                const [item] = await connection.query('SELECT stok, nama_barang FROM barang WHERE id_barang = ? FOR UPDATE', [rx.id_barang]);
+
+                if (item.length === 0) {
+                    throw new Error(`Item ID ${rx.id_barang} not found`);
+                }
+
+                // Server-side stock validation
+                if (item[0].stok < rx.jumlah) {
+                    throw new Error(`Stok tidak cukup untuk ${item[0].nama_barang}. Sisa: ${item[0].stok}`);
+                }
+
+                // Insert Prescription
+                await connection.query(
+                    'INSERT INTO resep_obat (id_rekam, id_barang, jumlah, aturan_pakai) VALUES (?, ?, ?, ?)',
+                    [idRekam, rx.id_barang, rx.jumlah, rx.aturan_pakai]
+                );
+
+                // Deduct Stock (Auto-Deduct)
+                await connection.query(
+                    'UPDATE barang SET stok = stok - ? WHERE id_barang = ?',
+                    [rx.jumlah, rx.id_barang]
+                );
+            }
+        }
+
+        // Update Appointment Status to 'Selesai'
+        await connection.query('UPDATE pendaftaran SET status = "Selesai" WHERE id_daftar = ?', [id_daftar]);
+
+        await connection.commit();
+        res.json({ message: 'Medical record saved successfully' });
+    } catch (err) {
+        await connection.rollback();
+        console.error('Medical record error:', err);
+        res.status(500).json({ message: 'Failed to save medical record: ' + err.message });
+    } finally {
+        connection.release();
+    }
+});
+
 // POST Generate Bill - Confirm and create transaction
 app.post('/api/billing/generate', authMiddleware, async (req, res) => {
     const { id_daftar } = req.body;

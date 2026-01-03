@@ -1187,6 +1187,28 @@ window.submitAddOwner = async (e) => {
 window.submitAddPet = async (e) => {
     e.preventDefault();
     const form = e.target;
+
+    // Custom Validation
+    const beratInput = form.querySelector('input[name="berat"]');
+    const tglLahirInput = form.querySelector('input[name="tgl_lahir"]');
+
+    if (beratInput && parseFloat(beratInput.value) <= 0) {
+        alert('Berat hewan harus lebih besar dari 0 kg');
+        return;
+    }
+
+    if (tglLahirInput) {
+        const selectedDate = new Date(tglLahirInput.value);
+        const today = new Date();
+        // Reset time part for accurate comparison
+        today.setHours(0, 0, 0, 0);
+
+        if (selectedDate > today) {
+            alert('Tanggal lahir tidak boleh melebihi tanggal hari ini');
+            return;
+        }
+    }
+
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
     const btn = form.querySelector('button[type="submit"]');
@@ -1217,6 +1239,59 @@ window.submitAddPet = async (e) => {
         btn.disabled = false;
         btn.textContent = 'Add Pet';
     }
+};
+
+// Add Prescription Handler
+window.addPrescription = () => {
+    const select = document.getElementById('medicine-select');
+    const qtyInput = document.getElementById('medicine-qty');
+    const usageInput = document.getElementById('medicine-usage');
+
+    if (!select || !qtyInput) return;
+
+    const idBarang = select.value;
+    const qty = parseInt(qtyInput.value);
+    const usage = usageInput.value || '';
+
+    if (!idBarang || !qty || qty <= 0) {
+        alert('Please select a medicine and enter a valid quantity');
+        return;
+    }
+
+    // CHECK STOCK
+    const selectedOption = select.options[select.selectedIndex];
+    // Extract stock from text: "Amoxicillin (Stock: 15)"
+    const stockMatch = selectedOption.textContent.match(/Stock: (\d+)/);
+    const currentStock = stockMatch ? parseInt(stockMatch[1]) : 0;
+
+    if (qty > currentStock) {
+        alert(`Stok tidak mencukupi! Stok saat ini: ${currentStock}`);
+        return;
+    }
+
+    // Add to list
+    if (!window.prescriptions) window.prescriptions = [];
+
+    // Check if already exists, update qty (Optional logic, or just add new entry)
+    // For simplicity, we just add new entry or replace if needed. 
+    // Let's allow duplicates for now or just push.
+
+    const medName = selectedOption.textContent.split(' (Stock:')[0];
+
+    window.prescriptions.push({
+        id_barang: idBarang,
+        nama_barang: medName,
+        jumlah: qty,
+        aturan_pakai: usage,
+        satuan: 'Pcs' // Placeholder unit
+    });
+
+    updatePrescriptionList();
+
+    // Reset inputs
+    select.value = '';
+    qtyInput.value = '';
+    usageInput.value = '';
 };
 
 // Load owners into pet modal dropdown when modal opens
