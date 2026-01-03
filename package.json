@@ -4,6 +4,7 @@
     "description": "Web application with Node.js, Express, and MySQL",
     "main": "server.js",
     "scripts": {
+        "seed": "node seeds_users.js",
         "start": "node server.js",
         "dev": "nodemon server.js"
     },
