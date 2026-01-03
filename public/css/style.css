@@ -1,12 +1,12 @@
 :root {
-    --bg-color: #0f172a;
-    --text-color: #f1f5f9;
-    --primary-color: #8b5cf6;
-    --secondary-color: #ec4899;
+    --bg-color: #F0F9FF;
+    --text-color: #0F172A;
+    --primary-color: #FACC15;
+    --secondary-color: #000000;
     --accent-color: #06b6d4;
-    --glass-bg: rgba(255, 255, 255, 0.05);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --card-bg: #1e293b;
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --card-bg: #FFFFFF;
     --font-main: 'Outfit', sans-serif;
 }
 
@@ -38,9 +38,21 @@ body {
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle at center, rgba(139, 92, 246, 0.15), transparent 50%);
+    background: radial-gradient(circle at center, rgba(250, 204, 21, 0.1), transparent 50%);
     z-index: -1;
     pointer-events: none;
+}
+
+/* ... existing styles ... */
+
+.visual-circle {
+    width: 300px;
+    height: 300px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.3;
+    animation: pulse 5s infinitealternate;
 }
 
 /* Header */
@@ -48,11 +60,7 @@ body {
     position: fixed;
     top: 0;
     width: 100%;
-<<<<<<< Updated upstream
-    background: rgba(15, 23, 42, 0.7);
-=======
     background: rgba(255, 255, 255, 0.1);
->>>>>>> Stashed changes
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--glass-border);
     z-index: 1000;
@@ -145,10 +153,7 @@ body {
 }
 
 .gradient-text {
-    background: linear-gradient(to right, var(--secondary-color));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--primary-color);
 }
 
 .hero-text p {
