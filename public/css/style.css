@@ -180,10 +180,12 @@ body {
 /* Hero Visual & Animations */
 .hero-visual {
     position: relative;
-    height: 400px;
+    height: 550px;
+    /* Fixed height to prevent layout shifts */
     display: flex;
     justify-content: center;
     align-items: center;
+    width: 100%;
 }
 
 .visual-circle {
