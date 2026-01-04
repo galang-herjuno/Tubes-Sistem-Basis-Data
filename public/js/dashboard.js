@@ -1252,7 +1252,7 @@ if (docRes.ok) {
         docSelect.appendChild(opt);
     });
 }
-}
+
 
 const form = document.getElementById('appointmentForm');
 form.onsubmit = async (e) => {
@@ -1281,7 +1281,6 @@ form.onsubmit = async (e) => {
         alert('Failed to create appointment');
     }
 };
-}
 
 async function loadInventory() {
     const res = await fetch('/api/inventory');

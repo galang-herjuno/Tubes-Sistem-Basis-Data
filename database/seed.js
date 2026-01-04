@@ -1,6 +1,7 @@
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 async function seed() {
     const connection = await mysql.createConnection({

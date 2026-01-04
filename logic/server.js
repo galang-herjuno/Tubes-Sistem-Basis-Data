@@ -45,30 +45,66 @@ const authMiddleware = (req, res, next) => {
     next();
 };
 
+// Middleware to check specific usage roles
+const authorizeRole = (...allowedRoles) => {
+    return (req, res, next) => {
+        if (!req.session.role || !allowedRoles.includes(req.session.role)) {
+            // 403 Forbidden Page
+            return res.status(403).send(`
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>403 Forbidden</title>
+                    <link rel="stylesheet" href="/css/style.css">
+                    <style>
+                        body { display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f8f9fa; flex-direction: column; }
+                        .error-container { text-align: center; padding: 40px; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+                        h1 { color: #dc3545; font-size: 3rem; margin-bottom: 10px; }
+                        p { font-size: 1.2rem; color: #6c757d; margin-bottom: 20px; }
+                        a { text-decoration: none; padding: 10px 20px; background: #0d6efd; color: white; border-radius: 5px; transition: 0.3s; }
+                        a:hover { background: #0b5ed7; }
+                    </style>
+                </head>
+                <body>
+                    <div class="error-container">
+                        <h1>403 Forbidden</h1>
+                        <p>Oops! You don't have permission to access this page.</p>
+                        <a href="/dashboard">Back to Dashboard</a>
+                    </div>
+                </body>
+                </html>
+            `);
+        }
+        next();
+    };
+};
+
 // Routes
 
 // Serve Modular Pages
-app.get('/appointments', authMiddleware, (req, res) => {
+app.get('/appointments', authMiddleware, authorizeRole('Admin', 'Resepsionis', 'Dokter'), (req, res) => {
     res.sendFile(path.join(__dirname, '../public/appointments.html'));
 });
 
-app.get('/patients', authMiddleware, (req, res) => {
+app.get('/patients', authMiddleware, authorizeRole('Admin', 'Resepsionis'), (req, res) => {
     res.sendFile(path.join(__dirname, '../public/patients.html'));
 });
 
-app.get('/medical-records', authMiddleware, (req, res) => {
+app.get('/medical-records', authMiddleware, authorizeRole('Admin', 'Dokter', 'Groomer'), (req, res) => {
     res.sendFile(path.join(__dirname, '../public/medical-records.html'));
 });
 
-app.get('/staff', authMiddleware, (req, res) => {
+app.get('/staff', authMiddleware, authorizeRole('Admin'), (req, res) => {
     res.sendFile(path.join(__dirname, '../public/staff.html'));
 });
 
-app.get('/inventory', authMiddleware, (req, res) => {
+app.get('/inventory', authMiddleware, authorizeRole('Admin', 'Resepsionis'), (req, res) => {
     res.sendFile(path.join(__dirname, '../public/inventory.html'));
 });
 
-app.get('/transactions', authMiddleware, (req, res) => {
+app.get('/transactions', authMiddleware, authorizeRole('Admin', 'Resepsionis'), (req, res) => {
     res.sendFile(path.join(__dirname, '../public/transactions.html'));
 });
 
@@ -415,7 +451,7 @@ app.get('/api/dashboard/queue', authMiddleware, async (req, res) => {
         const offset = parseInt(req.query.offset) || 0;
 
         let query = `
-            SELECT p.id_daftar, h.nama_hewan, h.id_hewan, peg.nama_lengkap as dokter, 
+            SELECT p.id_daftar, h.nama_hewan, h.id_hewan, h.jenis_hewan, peg.nama_lengkap as dokter, 
                 peg.id_pegawai, pm.nama_pemilik, pm.no_hp,
                 DATE_FORMAT(p.tgl_kunjungan, '%H:%i') as jam, 
                 DATE_FORMAT(p.tgl_kunjungan, '%Y-%m-%d') as tanggal,
@@ -855,6 +891,57 @@ app.post('/api/staff', authMiddleware, async (req, res) => {
     }
 });
 
+// Get Single Staff
+app.get('/api/staff/:id', authMiddleware, async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT peg.*, u.username, u.role, u.id_user 
+            FROM pegawai peg 
+            LEFT JOIN users u ON peg.id_user = u.id_user 
+            WHERE peg.id_pegawai = ?
+        `, [req.params.id]);
+
+        if (rows.length === 0) return res.status(404).json({ message: 'Staff not found' });
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch staff details' });
+    }
+});
+
+// Update Staff
+app.put('/api/staff/:id', authMiddleware, async (req, res) => {
+    const { nama_lengkap, jabatan, spesialisasi, no_hp, role } = req.body;
+    const connection = await db.getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        // 1. Update Pegawai Info
+        await connection.query(
+            'UPDATE pegawai SET nama_lengkap = ?, jabatan = ?, spesialisasi = ?, no_hp = ? WHERE id_pegawai = ?',
+            [nama_lengkap, jabatan, spesialisasi, no_hp, req.params.id]
+        );
+
+        // 2. Get User ID linked to this staff
+        const [staff] = await connection.query('SELECT id_user FROM pegawai WHERE id_pegawai = ?', [req.params.id]);
+
+        if (staff.length > 0 && staff[0].id_user) {
+            // 3. Update User Role
+            await connection.query('UPDATE users SET role = ? WHERE id_user = ?', [role, staff[0].id_user]);
+        }
+
+        await connection.commit();
+        res.json({ message: 'Staff updated successfully' });
+    } catch (err) {
+        await connection.rollback();
+        console.error(err);
+        res.status(500).json({ error: 'Failed to update staff' });
+    } finally {
+        connection.release();
+    }
+});
+
 // Delete Staff (Transaction: Delete User & Employee)
 app.delete('/api/staff/:id', authMiddleware, async (req, res) => {
     if (req.session.role !== 'Admin') return res.status(403).json({ message: 'Access denied' });
@@ -940,7 +1027,6 @@ app.put('/api/pegawai/profile', authMiddleware, async (req, res) => {
 
 
 // 6. Inventory
-// Get All Items
 // Get All Items (Paginated)
 app.get('/api/inventory', authMiddleware, async (req, res) => {
     try {
@@ -1554,6 +1640,108 @@ app.get('/api/services', authMiddleware, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to fetch services' });
+    }
+});
+
+
+// ==========================================
+// INVENTORY MANAGEMENT
+// ==========================================
+
+// Get Inventory (with pagination & filtering)
+app.get('/api/inventory', authMiddleware, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+        const search = req.query.search || '';
+        const category = req.query.category || '';
+
+        let query = 'SELECT * FROM barang';
+        let countQuery = 'SELECT COUNT(*) as total FROM barang';
+        const params = [];
+        const countParams = [];
+
+        const conditions = [];
+        if (search) {
+            conditions.push('nama_barang LIKE ?');
+            params.push(`%${search}%`);
+            countParams.push(`%${search}%`);
+        }
+        if (category) {
+            conditions.push('kategori = ?');
+            params.push(category);
+            countParams.push(category);
+        }
+
+        if (conditions.length > 0) {
+            const whereClause = ' WHERE ' + conditions.join(' AND ');
+            query += whereClause;
+            countQuery += whereClause;
+        }
+
+        query += ' ORDER BY nama_barang ASC LIMIT ? OFFSET ?';
+        params.push(limit, offset);
+
+        const [countResult] = await db.query(countQuery, countParams);
+        const totalRecords = countResult[0].total;
+        const totalPages = Math.ceil(totalRecords / limit);
+
+        const [rows] = await db.query(query, params);
+
+        res.json({
+            data: rows,
+            pagination: {
+                totalRecords,
+                totalPages,
+                currentPage: page,
+                limit
+            }
+        });
+    } catch (err) {
+        console.error('Inventory API Error:', err);
+        res.status(500).json({ error: 'Failed to fetch inventory: ' + err.message });
+    }
+});
+
+// Add Item
+app.post('/api/inventory', authMiddleware, async (req, res) => {
+    const { nama_barang, kategori, stok, harga_satuan, satuan } = req.body;
+    try {
+        const [result] = await db.query(
+            'INSERT INTO barang (nama_barang, kategori, stok, harga_satuan, satuan) VALUES (?, ?, ?, ?, ?)',
+            [nama_barang, kategori, stok, harga_satuan, satuan]
+        );
+        res.json({ message: 'Item added', id: result.insertId });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to add item' });
+    }
+});
+
+// Update Item
+app.put('/api/barang/:id', authMiddleware, async (req, res) => {
+    const { stok, harga_satuan, satuan } = req.body;
+    try {
+        await db.query(
+            'UPDATE barang SET stok = ?, harga_satuan = ?, satuan = ? WHERE id_barang = ?',
+            [stok, harga_satuan, satuan, req.params.id]
+        );
+        res.json({ message: 'Item updated' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to update item' });
+    }
+});
+
+// Delete Item
+app.delete('/api/barang/:id', authMiddleware, async (req, res) => {
+    try {
+        await db.query('DELETE FROM barang WHERE id_barang = ?', [req.params.id]);
+        res.json({ message: 'Item deleted' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to delete item' });
     }
 });
 

@@ -177,3 +177,9 @@ async function deleteStaff(id) {
         }
     }
 }
+
+// Make functions globally available
+window.openEditStaff = openEditStaff;
+window.deleteStaff = deleteStaff;
+window.toggleSpesialisasi = toggleSpesialisasi;
+window.toggleEditSpesialisasi = toggleEditSpesialisasi;

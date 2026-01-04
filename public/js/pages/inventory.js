@@ -54,9 +54,21 @@ async function loadInventory(page = 1) {
                 nextBtn.disabled = pagination.currentPage >= pagination.totalPages;
                 pageInfo.textContent = `Page ${pagination.currentPage} of ${pagination.totalPages}`;
             }
+        } else {
+            console.error('Inventory fetch failed:', res.status, res.statusText);
+            let errMsg = `Status: ${res.status}`;
+            try {
+                const errBody = await res.json();
+                if (errBody.error) errMsg = errBody.error;
+            } catch (e) { /* ignore json parse error */ }
+
+            const tbody = document.querySelector('#inventory-view table tbody');
+            if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red">Failed to load inventory. ${errMsg}</td></tr>`;
         }
     } catch (err) {
         console.error('Error loading inventory:', err);
+        const tbody = document.querySelector('#inventory-view table tbody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red">Network Error: ${err.message}</td></tr>`;
     }
 }
 

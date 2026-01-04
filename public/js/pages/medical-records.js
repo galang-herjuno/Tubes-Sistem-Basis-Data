@@ -7,12 +7,11 @@ let availableDrugs = [];
 
 async function loadDrugs() {
     try {
-        const res = await fetch('/api/inventory?category=Obat');
+        const res = await fetch('/api/medicines');
         if (res.ok) {
             const result = await res.json();
-            // API inventory returns { data: [...], pagination: ... } if paginated, OR array if not.
-            // My recent update to inventory API returns object with data.
-            availableDrugs = result.data || result;
+            // API medicines returns array of drugs
+            availableDrugs = result;
         }
     } catch (err) {
         console.error('Failed to load drugs', err);
@@ -26,12 +25,9 @@ async function loadMedicalWorkspace() {
     queueList.innerHTML = '<div style="text-align:center; padding:1rem; color: #94a3b8;">Loading queue...</div>';
 
     try {
-        // Use the common dashboard queue endpoint
-        // Server automatically filters by Doctor ID if role is Doctor
         const res = await fetch('/api/dashboard/queue?date=today&status=active&limit=100');
         if (res.ok) {
             const data = await res.json();
-            // Handle array or pagination object
             const queue = Array.isArray(data) ? data : data.data;
 
             queueList.innerHTML = '';
@@ -43,24 +39,39 @@ async function loadMedicalWorkspace() {
 
             queue.forEach(q => {
                 const div = document.createElement('div');
-                div.style.cssText = 'padding:1rem; border-bottom:1px solid rgba(255,255,255,0.05); cursor:pointer; transition:background 0.2s;';
+                div.style.cssText = 'padding:1rem; border-bottom:1px solid #e2e8f0; cursor:pointer; transition:background 0.2s;';
 
-                // q.jam is available from endpoint
+                // Parse Service from keluhan_awal (e.g., "[Grooming] ...")
+                let serviceInfo = q.keluhan_awal || 'General Checkup';
+                let doctorName = q.dokter || 'Unassigned';
+
                 div.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h4 style="margin:0; font-weight:600;">${q.nama_hewan || 'Unknown'}</h4>
-                        <span class="status-badge status-${q.status.toLowerCase()}">${q.status}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div>
+                            <h4 style="margin:0; font-weight:600; color:var(--text-color); font-size:1.1rem;">${q.nama_hewan || 'Unknown'}</h4>
+                            <p style="margin:0.3rem 0; font-size:0.9rem; color:var(--text-muted);">
+                                <span style="font-weight:500; color:var(--text-color);">${q.jenis_hewan || 'Pet'}</span> • Owner: ${q.nama_pemilik || '-'}
+                            </p>
+                            <p style="margin:0.2rem 0; font-size:0.9rem; color:var(--primary-color);">
+                                <i class="fa-solid fa-stethoscope"></i> ${serviceInfo}
+                            </p> 
+                            <p style="margin:0.2rem 0; font-size:0.85rem; color:var(--text-muted);">
+                                <i class="fa-solid fa-user-doctor"></i> ${doctorName}
+                            </p>
+                        </div>
+                        <div style="text-align:right;">
+                            <span class="status-badge status-${q.status.toLowerCase()}">${q.status}</span>
+                            <div style="margin-top:0.5rem; font-size:0.9rem; font-weight:600; color:var(--accent-color);">
+                                <i class="fa-solid fa-clock"></i> ${q.jam || '-'}
+                            </div>
+                        </div>
                     </div>
-                    <p style="margin:0.3rem 0; font-size:0.85rem; color:var(--text-muted);">${q.jenis_hewan || ''} • ${q.nama_pemilik || ''}</p>
-                    <p style="margin:0; font-size:0.85rem; color:var(--accent-color);"><i class="fa-solid fa-clock"></i> ${q.jam || '-'}</p>
                 `;
 
-                div.addEventListener('mouseenter', () => div.style.background = 'rgba(255,255,255,0.05)');
-                div.addEventListener('mouseleave', () => {
-                    if (!div.classList.contains('active-patient')) div.style.background = 'transparent';
-                });
+                div.addEventListener('mouseenter', () => div.style.background = '#f8fafc');
+                div.addEventListener('mouseleave', () => div.style.background = 'transparent');
 
-                div.onclick = () => selectPatient(q, div);
+                div.onclick = () => selectPatient(q);
                 queueList.appendChild(div);
             });
         }
@@ -70,27 +81,14 @@ async function loadMedicalWorkspace() {
     }
 }
 
-async function selectPatient(patient, elem) {
-    // UI Highlight
-    document.querySelectorAll('#medical-queue-list > div').forEach(d => {
-        d.style.background = 'transparent';
-        d.classList.remove('active-patient');
-    });
-    elem.style.background = 'rgba(255,255,255,0.1)';
-    elem.classList.add('active-patient');
+async function selectPatient(patient) {
+    // Open Modal
+    openModal('medicalRecordModal');
 
-    // Unlock Form
-    const container = document.getElementById('medical-form-container');
-    if (container) {
-        container.style.opacity = '1';
-        container.style.pointerEvents = 'all';
-    }
-
-    // Set Active Badge
+    // Set Active Badge inside Modal
     const badge = document.getElementById('active-patient-badge');
     if (badge) {
-        badge.style.display = 'inline-block';
-        badge.textContent = `${patient.nama_hewan} (${patient.jenis_hewan})`;
+        badge.textContent = `${patient.nama_hewan} (${patient.jenis_hewan}) - Owner: ${patient.nama_pemilik}`;
     }
 
     // Set Hidden IDs
@@ -126,12 +124,15 @@ function addPrescriptionRow() {
         });
     }
 
+    // Fixed Styles for Light Mode Visibility
+    const inputStyle = 'padding:0.6rem; border-radius:5px; background:white; color:var(--text-color); border:1px solid #cbd5e1; width:100%;';
+
     row.innerHTML = `
-        <select class="drug-select" style="padding:0.5rem; border-radius:5px; background:rgba(255,255,255,0.1); color:white; border:none; width:100%;">
+        <select class="drug-select" style="${inputStyle}">
             ${drugOptions}
         </select>
-        <input type="number" class="drug-qty" placeholder="Qty" style="padding:0.5rem; border-radius:5px; background:rgba(255,255,255,0.1); color:white; border:none; width:100%;">
-        <input type="text" class="drug-notes" placeholder="Aturan Pakai (e.g., 3x1)" style="padding:0.5rem; border-radius:5px; background:rgba(255,255,255,0.1); color:white; border:none; width:100%;">
+        <input type="number" class="drug-qty" placeholder="Qty" style="${inputStyle}">
+        <input type="text" class="drug-notes" placeholder="Aturan Pakai (e.g., 3x1)" style="${inputStyle}">
         <button onclick="this.parentElement.remove()" style="background:transparent; border:none; color:#ef4444; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
     `;
 
@@ -161,13 +162,12 @@ async function saveMedicalRecord(status) {
         }
     });
 
-    // Correct payload keys for /api/medical-records
     const payload = {
         id_daftar: idDaftar,
         diagnosa,
         tindakan,
         catatan_dokter: catatan,
-        prescriptions: prescriptions // MATCHES SERVER EXPECTATION
+        prescriptions: prescriptions
     };
 
     try {
@@ -181,14 +181,8 @@ async function saveMedicalRecord(status) {
 
         if (res.ok) {
             alert(result.message);
-            // Reload queue
-            loadMedicalWorkspace();
-            // Reset form UI
-            const container = document.getElementById('medical-form-container');
-            if (container) {
-                container.style.opacity = '0.5';
-                container.style.pointerEvents = 'none';
-            }
+            closeModal('medicalRecordModal'); // Close Modal
+            loadMedicalWorkspace(); // Reload Queue
         } else {
             alert('Error: ' + result.message);
         }

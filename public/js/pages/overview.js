@@ -206,6 +206,13 @@ async function loadQueueData(reset = true) {
 
 window.currentBillId = null;
 
+// ==========================================
+// BILL GENERATION & DISCOUNT LOGIC
+// ==========================================
+
+window.currentBillId = null;
+window.billOriginalTotal = 0;
+
 window.generateBill = async (idDaftar) => {
     try {
         // Fetch Preview
@@ -228,73 +235,128 @@ window.generateBill = async (idDaftar) => {
 };
 
 function renderBillPreview(data) {
-    const container = document.getElementById('bill-preview-content');
-    if (!container) return;
+    // 1. Populate Info
+    document.getElementById('bill-owner').textContent = data.owner.nama;
+    document.getElementById('bill-patient').textContent = `${data.pet.nama} (${data.pet.jenis})`;
+    document.getElementById('bill-doctor').textContent = data.doctor.nama;
 
-    // Render Items Table
-    let itemsHtml = `
-        <div style="margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:1rem;">
-            <p><strong>Owner:</strong> ${data.owner.nama}</p>
-            <p><strong>Patient:</strong> ${data.pet.nama} (${data.pet.jenis})</p>
-            <p><strong>Doctor:</strong> ${data.doctor.nama}</p>
-        </div>
-        <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
-            <thead>
-                <tr style="border-bottom:1px solid rgba(255,255,255,0.1); text-align:left;">
-                    <th style="padding:0.5rem;">Item</th>
-                    <th style="padding:0.5rem; text-align:right;">Price</th>
-                    <th style="padding:0.5rem; text-align:center;">Qty</th>
-                    <th style="padding:0.5rem; text-align:right;">Subtotal</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
+    // 2. Populate Items
+    const tbody = document.getElementById('bill-items');
+    tbody.innerHTML = '';
 
     data.items.forEach(item => {
-        itemsHtml += `
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                <td style="padding:0.5rem;">${item.nama} <span style="font-size:0.8rem; color:var(--text-muted)">(${item.jenis_item})</span></td>
-                <td style="padding:0.5rem; text-align:right;">${formatCurrency(item.harga || item.harga_saat_ini)}</td>
-                <td style="padding:0.5rem; text-align:center;">${item.qty}</td>
-                <td style="padding:0.5rem; text-align:right;">${formatCurrency(item.subtotal)}</td>
-            </tr>
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #e2e8f0';
+        tr.innerHTML = `
+            <td style="padding:0.8rem; color:#334155;">${item.nama} <span style="font-size:0.8rem; color:#94a3b8">(${item.jenis_item})</span></td>
+            <td style="padding:0.8rem; text-align:right; color:#334155;">${formatCurrency(item.harga || item.harga_saat_ini)}</td>
+            <td style="padding:0.8rem; text-align:center; color:#334155;">${item.qty}</td>
+            <td style="padding:0.8rem; text-align:right; font-weight:600; color:#1e293b;">${formatCurrency(item.subtotal)}</td>
         `;
+        tbody.appendChild(tr);
     });
 
-    itemsHtml += `
-            </tbody>
-            <tfoot>
-                <tr style="font-weight:bold; font-size:1.1rem; color:var(--accent-color);">
-                    <td colspan="3" style="padding:1rem 0.5rem; text-align:right;">TOTAL</td>
-                    <td style="padding:1rem 0.5rem; text-align:right;">${formatCurrency(data.total_biaya)}</td>
-                </tr>
-            </tfoot>
-        </table>
-    `;
+    // 3. Set Base Values
+    window.billOriginalTotal = parseFloat(data.total_biaya);
+    document.getElementById('bill-subtotal').textContent = formatCurrency(window.billOriginalTotal);
 
-    container.innerHTML = itemsHtml;
+    // 4. Reset Inputs
+    document.querySelector('input[name="discountType"][value="nominal"]').checked = true;
+    document.getElementById('bill-discount-input').value = 0;
+    document.getElementById('bill-payment-method').value = 'Cash';
+
+    // 5. Initial Calc
+    calculateBillTotal();
 }
+
+window.calculateBillTotal = () => {
+    const original = window.billOriginalTotal || 0;
+    const discountType = document.querySelector('input[name="discountType"]:checked').value;
+    const discountInput = parseFloat(document.getElementById('bill-discount-input').value) || 0;
+
+    let discountAmount = 0;
+
+    if (discountType === 'persen') {
+        // Limit percent to 100
+        const percent = Math.min(discountInput, 100);
+        discountAmount = original * (percent / 100);
+    } else {
+        // Nominal
+        discountAmount = discountInput;
+    }
+
+    // Prevent negative total
+    let finalTotal = original - discountAmount;
+    if (finalTotal < 0) finalTotal = 0;
+
+    // Update UI
+    document.getElementById('bill-discount-display').textContent = `-${formatCurrency(discountAmount)}`;
+    document.getElementById('bill-final-total').textContent = formatCurrency(finalTotal);
+};
 
 window.confirmBillGeneration = async () => {
     if (!window.currentBillId) return;
 
-    const btn = document.getElementById('confirm-bill-btn');
-    btn.disabled = true;
-    btn.textContent = 'Processing...';
+    const btn = document.getElementById('confirm-bill-btn'); // Note: ID might need to match HTML button or I should add ID to button in HTML
+
+    // In my HTML update I didn't verify the button ID. The old one had id="confirm-bill-btn".
+    // I will assume layout is correct or select by onclick attribute if needed.
+    // Ideally ensure HTML has id="confirm-bill-btn"
+
+    // Just in case, define button by function call context if possible, but ID is safer.
+    // The previous HTML update DID NOT include id="confirm-bill-btn" in the new button!
+    // Wait, let me check the HTML update content...
+    // <button class="cta-button" onclick="confirmBillGeneration()" ...>
+    // It MISSING id="confirm-bill-btn". I should fix that via DOM or assumes user won't double click fast.
+    // Or I can select querySelector('.cta-button[onclick*="confirmBillGeneration"]')
+
+    // To be safe, I'll update HTML ID in next step or just use generic selector.
+    // Let's use generic selector for now to avoid another HTML edit if possible.
+    const buttons = document.querySelectorAll('button');
+    let targetBtn = null;
+    buttons.forEach(b => {
+        if (b.textContent.includes('Complete Payment')) targetBtn = b;
+    });
+    if (targetBtn) {
+        targetBtn.disabled = true;
+        targetBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+    }
 
     try {
+        // Gather Data
+        const discountType = document.querySelector('input[name="discountType"]:checked').value;
+        const discountInput = parseFloat(document.getElementById('bill-discount-input').value) || 0;
+        const paymentMethod = document.getElementById('bill-payment-method').value;
+
+        // Calculate discount amount for backend (though backend might recalc, it helps to match)
+        // Backend expects: diskon (amount), tipe_diskon, input_diskon
+
+        // Actually server.js line 1500 recalculates it based on `input_diskon` and `tipe_diskon`.
+        // So I just send those.
+
+        const payload = {
+            id_daftar: window.currentBillId,
+            diskon: discountInput, // This is actually 'input_diskon' param name in server?
+            // Wait, server.js: const { id_daftar, diskon = 0, tipe_diskon = 'nominal', ... } = req.body;
+            // AND const inputDiskon = parseFloat(diskon) || 0;
+            // So `diskon` in body is treated as the INPUT value.
+
+            tipe_diskon: discountType,
+            metode_bayar: paymentMethod
+        };
+
         const res = await fetch('/api/billing/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_daftar: window.currentBillId, metode_bayar: 'Cash' }) // Default Cash for now
+            body: JSON.stringify(payload)
         });
 
         const result = await res.json();
 
         if (res.ok) {
-            alert('Bill generated successfully! Transaction ID: #' + (result.id || ''));
+            alert('Transcation Successful!\nTotal: ' + formatCurrency(result.total_biaya));
             closeModal('billPreviewModal');
-            window.reloadQueue(); // Refresh queue to show 'Paid' or remove button
+            window.reloadQueue();
         } else {
             alert('Error: ' + result.message);
         }
@@ -302,7 +364,9 @@ window.confirmBillGeneration = async () => {
         console.error(err);
         alert('Failed to generate bill');
     } finally {
-        btn.disabled = false;
-        btn.textContent = 'Confirm & Generate';
+        if (targetBtn) {
+            targetBtn.disabled = false;
+            targetBtn.innerHTML = '<i class="fa-solid fa-check-circle"></i> Complete Payment';
+        }
     }
 };

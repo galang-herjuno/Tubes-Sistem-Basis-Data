@@ -85,7 +85,8 @@ CREATE TABLE barang (
     kategori ENUM('Obat', 'Makanan', 'Aksesoris', 'Lainnya') NOT NULL,
     stok INT DEFAULT 0,
     harga_satuan DECIMAL(10,2) NOT NULL,
-    satuan VARCHAR(20) -- Pcs, Botol, Kg
+    satuan VARCHAR(20), -- Pcs, Botol, Kg
+    is_active TINYINT(1) DEFAULT 1
 );
 
 -- ==========================================
