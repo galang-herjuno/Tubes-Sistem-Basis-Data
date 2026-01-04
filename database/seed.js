@@ -18,21 +18,25 @@ async function seed() {
         const doctorHash = await bcrypt.hash('sarah123', 10);
         const receptionHash = await bcrypt.hash('resepsionis123', 10);
         const customerHash = await bcrypt.hash('customer123', 10);
+        const groomerHash = await bcrypt.hash('groomer123', 10);
 
         // 1. Users (All roles for testing)
         await connection.query(`INSERT IGNORE INTO users (username, password, role) VALUES 
             ('admin', '${adminHash}', 'Admin'),
             ('sarah', '${doctorHash}', 'Dokter'),
             ('resepsionis', '${receptionHash}', 'Resepsionis'),
-            ('customer', '${customerHash}', 'Pelanggan')`);
-        console.log('✅ Users seeded (Admin, Dokter, Resepsionis, Pelanggan)');
+            ('customer', '${customerHash}', 'Pelanggan'),
+            ('groomer', '${groomerHash}', 'Groomer')`);
+        console.log('✅ Users seeded (Admin, Dokter, Resepsionis, Pelanggan, Groomer)');
 
         // 2. Staff (with email and alamat)
+        // Assumption: IDs are sequential 1=Admin, 2=Doctor, 3=Recep, 4=Cust, 5=Groomer
         await connection.query(`INSERT IGNORE INTO pegawai (id_user, nama_lengkap, jabatan, spesialisasi, no_hp, email, alamat) VALUES 
             (1, 'Admin User', 'Staff', NULL, '081234567889', 'admin@pawwhisker.com', 'Jl. Admin No. 1'),
             (2, 'Dr. Sarah Johnson', 'Dokter Hewan', 'Surgery', '081234567890', 'sarah@pawwhisker.com', 'Jl. Veteriner No. 10'),
-            (3, 'Maria Garcia', 'Staff', NULL, '081234567891', 'maria@pawwhisker.com', 'Jl. Klinik No. 5')`);
-        console.log('✅ Staff seeded (Admin, Doctor, Receptionist with email & address)');
+            (3, 'Maria Garcia', 'Staff', NULL, '081234567891', 'maria@pawwhisker.com', 'Jl. Klinik No. 5'),
+            (5, 'Jane Groomer', 'Groomer', 'Styling', '081234567899', 'jane@pawwhisker.com', 'Jl. Hobi No. 7')`);
+        console.log('✅ Staff seeded (Admin, Doctor, Receptionist, Groomer)');
 
         // 3. Owner (linked to customer account)
         await connection.query(`INSERT IGNORE INTO pemilik (id_user, nama_pemilik, alamat, no_hp, email) VALUES 
@@ -63,8 +67,9 @@ async function seed() {
         // 7. Appointment (for today)
         const today = new Date().toISOString().split('T')[0];
         await connection.query(`INSERT IGNORE INTO pendaftaran (id_hewan, id_pegawai, tgl_kunjungan, keluhan_awal, status) VALUES 
-            (1, 1, '${today} 09:00:00', 'Kucing tidak mau makan', 'Menunggu')`);
-        console.log('✅ Appointment seeded (today at 09:00)');
+            (1, 1, '${today} 09:00:00', 'Kucing tidak mau makan', 'Menunggu'),
+            (1, 5, '${today} 11:00:00', '[Grooming] Treatment bulu', 'Menunggu')`);
+        console.log('✅ Appointment seeded (Doctor & Grooming)');
 
         console.log('\n✨ Seeding completed successfully!');
         console.log('\n📋 Test Accounts (username / password):');
@@ -72,6 +77,7 @@ async function seed() {
         console.log('   👨‍⚕️ Doctor:       sarah / sarah123');
         console.log('   📋 Receptionist: resepsionis / resepsionis123');
         console.log('   👤 Customer:     customer / customer123');
+        console.log('   ✂️ Groomer:      groomer / groomer123');
         console.log('\n💡 Password pattern: {username}123');
         console.log('📊 Database ready with sample data!\n');
 

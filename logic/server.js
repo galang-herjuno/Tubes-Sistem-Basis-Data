@@ -22,7 +22,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '../public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -52,7 +52,7 @@ app.get('/login', (req, res) => {
     if (req.session.userId) {
         return res.redirect('/dashboard');
     }
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+    res.sendFile(path.join(__dirname, '../public', 'login.html'));
 });
 
 // Serve Dashboard (Protected)
@@ -71,7 +71,7 @@ app.get('/dashboard', async (req, res) => {
         console.error('Error checking user role:', err);
     }
 
-    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+    res.sendFile(path.join(__dirname, '../public', 'dashboard.html'));
 });
 
 // Serve Customer Dashboard (Protected)
@@ -79,7 +79,7 @@ app.get('/customer-dashboard', (req, res) => {
     if (!req.session.userId) {
         return res.redirect('/login');
     }
-    res.sendFile(path.join(__dirname, 'public', 'customer-dashboard.html'));
+    res.sendFile(path.join(__dirname, '../public', 'customer-dashboard.html'));
 });
 
 // API Login
@@ -418,8 +418,8 @@ app.get('/api/dashboard/queue', authMiddleware, async (req, res) => {
             query += ` AND p.status IN ('Selesai', 'Batal')`;
         }
 
-        // Doctor Filter
-        if (role === 'Dokter') {
+        // Doctor & Groomer Filter
+        if (role === 'Dokter' || role === 'Groomer') {
             query += ` AND peg.id_user = ?`;
             params.push(userId);
         }
@@ -702,7 +702,7 @@ app.post('/api/staff', authMiddleware, async (req, res) => {
     const { username, password, role, nama_lengkap, jabatan, spesialisasi, no_hp } = req.body;
 
     // Validate role for staff
-    if (!['Dokter', 'Resepsionis', 'Admin'].includes(role)) {
+    if (!['Dokter', 'Resepsionis', 'Admin', 'Groomer'].includes(role)) {
         return res.status(400).json({ message: 'Invalid role for staff' });
     }
 
@@ -1171,7 +1171,7 @@ app.post('/api/medical-records', authMiddleware, async (req, res) => {
     const { id_daftar, diagnosa, tindakan, catatan_dokter, prescriptions } = req.body;
     const userRole = req.session.role;
 
-    if (userRole !== 'Dokter' && userRole !== 'Admin') {
+    if (userRole !== 'Dokter' && userRole !== 'Admin' && userRole !== 'Groomer') {
         return res.status(403).json({ message: 'Access denied' });
     }
 

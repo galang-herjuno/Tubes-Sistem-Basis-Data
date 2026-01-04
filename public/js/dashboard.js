@@ -46,23 +46,48 @@ function updateUIBasedOnRole(role) {
     const adminElements = document.querySelectorAll('.role-admin');
     const doctorElements = document.querySelectorAll('.role-dokter');
     const receptionElements = document.querySelectorAll('.role-resepsionis');
+    const groomerElements = document.querySelectorAll('.role-groomer');
 
     // Default: Hide all role-specific
     adminElements.forEach(el => el.style.display = 'none');
     doctorElements.forEach(el => el.style.display = 'none');
     receptionElements.forEach(el => el.style.display = 'none');
+    groomerElements.forEach(el => el.style.display = 'none');
+
+    // Reset Stats Grid Visibility (Show by default)
+    const statsGrid = document.querySelector('.stats-grid');
+    if (statsGrid) statsGrid.style.display = 'grid'; // Restore grid
+    const greeting = document.getElementById('groomer-greeting');
+    if (greeting) greeting.style.display = 'none'; // Hide greeting
 
     if (role === 'Admin') {
-        adminElements.forEach(el => el.style.display = 'block');
-        doctorElements.forEach(el => el.style.display = 'block');
-        receptionElements.forEach(el => el.style.display = 'block');
+        adminElements.forEach(el => el.style.display = el.tagName === 'LI' ? 'block' : 'block');
     } else if (role === 'Dokter') {
-        doctorElements.forEach(el => el.style.display = 'block');
+        doctorElements.forEach(el => el.style.display = el.tagName === 'LI' ? 'block' : 'block');
         // Hide Revenue Today for doctors
         const revenueCard = document.querySelector('.stat-card:nth-child(2)');
         if (revenueCard) revenueCard.style.display = 'none';
+    } else if (role === 'Groomer') {
+        groomerElements.forEach(el => el.style.display = el.tagName === 'LI' ? 'block' : 'block');
+
+        // Hide Entire Stats Grid for Groomer
+        if (statsGrid) statsGrid.style.display = 'none';
+
+        // Show Greeting
+        if (greeting) {
+            greeting.style.display = 'block';
+            const nameEl = document.getElementById('user-name');
+            const displayEl = document.getElementById('groomer-name-display');
+            if (nameEl && displayEl) {
+                // Use username directly if possible, or wait for profile load
+                // We use setTimeout to ensure user-name text is populated
+                setTimeout(() => {
+                    displayEl.textContent = nameEl.textContent || 'Groomer';
+                }, 100);
+            }
+        }
     } else if (role === 'Resepsionis') {
-        receptionElements.forEach(el => el.style.display = 'block');
+        receptionElements.forEach(el => el.style.display = el.tagName === 'LI' ? 'block' : 'block');
     } else if (role === 'Pelanggan') {
         // Limited view for Pelanggan
     }
@@ -1613,7 +1638,6 @@ function showBillPreviewModal(data, appointmentId) {
             </div>
 
             <!-- Discount -->
-            <!-- Discount -->
             <div style="background:rgba(255,255,255,0.03); border-radius:8px; padding:1rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; gap: 1rem;">
                 <div style="flex:1;">
                     <label style="color:#94a3b8; font-size:0.85rem; display:block; margin-bottom:0.3rem;">Tipe Diskon</label>
@@ -1626,7 +1650,7 @@ function showBillPreviewModal(data, appointmentId) {
                 </div>
                 <div style="flex:1;">
                     <label style="color:#94a3b8; font-size:0.85rem; display:block; margin-bottom:0.3rem;">Nilai Diskon</label>
-                    <input type="number" id="bill-discount-input" value="0" min="0" 
+                    <input type="text" id="bill-discount-input" value="0" placeholder="0"
                         style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); color:white; padding:0.5rem; border-radius:6px; width:100%; text-align:right; font-weight:600;"
                         oninput="window.updatePreviewTotal(${data.total_biaya})">
                 </div>
@@ -1685,6 +1709,85 @@ function showBillPreviewModal(data, appointmentId) {
 
     document.body.appendChild(modalOverlay);
 }
+
+// Update Preview Total with Currency Formatting
+window.updatePreviewTotal = (originalTotal) => {
+    const typeEl = document.getElementById('bill-discount-type');
+    const inputEl = document.getElementById('bill-discount-input');
+
+    if (!typeEl || !inputEl) return;
+
+    // Auto-format input if nominal
+    if (typeEl.value === 'nominal') {
+        const rawVal = inputEl.value.replace(/\D/g, "");
+        const formatted = rawVal.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        if (inputEl.value !== formatted) {
+            inputEl.value = formatted;
+        }
+    }
+
+    const type = typeEl.value;
+    let input = type === 'nominal'
+        ? parseFloat(inputEl.value.replace(/\./g, '').replace(/,/g, '.')) || 0
+        : parseFloat(inputEl.value) || 0;
+
+    let discountAmount = 0;
+    if (type === 'persen') {
+        if (input > 100) input = 100; // Cap
+        discountAmount = originalTotal * (input / 100);
+    } else {
+        if (input > originalTotal) input = originalTotal; // Cap
+        discountAmount = input;
+    }
+
+    const final = Math.max(0, originalTotal - discountAmount);
+    const display = document.getElementById('bill-total-display');
+    if (display) display.textContent = formatCurrency(final);
+};
+
+// Confirm and Generate Bill with Discount Parsing
+window.confirmGenerateBill = async (appointmentId) => {
+    try {
+        const discountType = document.getElementById('bill-discount-type').value;
+        let discountInput = document.getElementById('bill-discount-input').value;
+        const paymentMethod = document.getElementById('bill-payment-method').value;
+
+        // Clean parsing
+        let cleanedDiscount = 0;
+        if (discountType === 'nominal') {
+            // removes all non-numeric chars for 'nominal'
+            cleanedDiscount = parseFloat(discountInput.replace(/\./g, '')) || 0;
+        } else {
+            cleanedDiscount = parseFloat(discountInput) || 0;
+        }
+
+        const res = await fetch('/api/billing/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_daftar: appointmentId,
+                diskon: cleanedDiscount,
+                tipe_diskon: discountType,
+                metode_bayar: paymentMethod
+            })
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+            closeBillPreviewModal();
+            showBillSuccessModal(result.total_biaya, result.id_transaksi, 'Pet', result.diskon, result.tipe_diskon, result.input_diskon);
+            // Assuming loadTransactions and fetchQueue exist
+            if (typeof window.loadTransactions === 'function') window.loadTransactions();
+            if (typeof window.fetchQueue === 'function') window.fetchQueue();
+            if (typeof window.loadDashboardStats === 'function') window.loadDashboardStats();
+        } else {
+            alert('❌ Error: ' + result.message);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('❌ Failed to generate transaction');
+    }
+};
 
 // Close Bill Preview Modal
 window.closeBillPreviewModal = () => {

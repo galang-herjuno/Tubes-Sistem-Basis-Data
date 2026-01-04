@@ -32,8 +32,9 @@
             <li class="role-admin role-resepsionis"><a href="#"><i class="fa-solid fa-users"></i> Patients & Owners</a>
             </li>
 
-            <!-- Records: Admin & Doctor -->
-            <li class="role-admin role-dokter"><a href="#"><i class="fa-solid fa-stethoscope"></i> Medical Records</a>
+            <!-- Records: Admin & Doctor & Groomer -->
+            <li class="role-admin role-dokter role-groomer"><a href="#"><i class="fa-solid fa-stethoscope"></i> Medical
+                    Records</a>
             </li>
 
             <!-- Staff: Admin Only -->
@@ -73,6 +74,13 @@
 
         <!-- DASHBOARD SECTION -->
         <div id="dashboard-view" class="section-content">
+            <!-- Groomer Greeting -->
+            <div id="groomer-greeting"
+                style="display:none; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 2rem; border-radius: 16px; color: white; margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);">
+                <h2 style="margin:0; font-size: 2rem;">Hello, <span id="groomer-name-display">Groomer</span>! 👋</h2>
+                <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Have a great grooming session today.</p>
+            </div>
+
             <!-- Stats Grid -->
             <div class="stats-grid">
                 <div class="stat-card">
@@ -191,7 +199,7 @@
                 <!-- Right Column -->
                 <div class="right-col">
                     <!-- Recent Medical Records -->
-                    <div class="card role-admin role-dokter" style="margin-bottom: 1.5rem;">
+                    <div class="card role-admin role-dokter role-groomer" style="margin-bottom: 1.5rem;">
                         <div class="card-header">
                             <h3>Recent Records</h3>
                         </div>
@@ -542,6 +550,7 @@
                     <label>System Role (Login Access)</label>
                     <select name="role" required>
                         <option value="Dokter">Dokter</option>
+                        <option value="Groomer">Groomer</option>
                         <option value="Resepsionis">Resepsionis</option>
                         <option value="Admin">Admin</option>
                     </select>
@@ -609,6 +618,7 @@
                         <label>System Role (Login)</label>
                         <select id="edit-staff-role" required>
                             <option value="Dokter">Dokter</option>
+                            <option value="Groomer">Groomer</option>
                             <option value="Resepsionis">Resepsionis</option>
                             <option value="Admin">Admin</option>
                         </select>
