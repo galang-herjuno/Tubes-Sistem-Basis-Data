@@ -37,7 +37,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         dateEl.textContent = new Date().toLocaleDateString('en-US', options);
     }
+
+    // 4. Notification Check (Receptionist)
+    setTimeout(checkBillNotifications, 2000); // Check after render
 });
+
+async function checkBillNotifications() {
+    // Only for Resepsionis
+    if (window.currentUserRole !== 'Resepsionis' && window.currentUserRole !== 'Admin') return;
+
+    try {
+        // Check today's completed queue
+        const res = await fetch('/api/dashboard/queue?date=today&status=completed&limit=5');
+        if (res.ok) {
+            const result = await res.json();
+            const data = Array.isArray(result) ? result : result.data;
+
+            // Check if any is unbilled (id_transaksi is null)
+            const hasUnpaid = data.some(item => item.status === 'Selesai' && !item.id_transaksi);
+
+            if (hasUnpaid) {
+                const links = document.querySelectorAll('.menu a');
+                links.forEach(link => {
+                    // Check if href is dashboard (where queue is) or transactions
+                    // User requested "sidebar Transactions".
+                    if (link.getAttribute('href') === '/transactions') {
+                        link.style.textShadow = '0 0 10px #f59e0b';
+                        link.style.color = '#f59e0b';
+                        // Add dot
+                        if (!link.querySelector('.notif-dot')) {
+                            const dot = document.createElement('span');
+                            dot.className = 'notif-dot';
+                            dot.style.cssText = 'display:inline-block; width:8px; height:8px; background:#f59e0b; border-radius:50%; margin-left:10px; box-shadow:0 0 5px #f59e0b;';
+                            link.appendChild(dot);
+                        }
+                    }
+                });
+            }
+        }
+    } catch (err) {
+        // quiet fail
+    }
+}
 
 function injectLayout() {
     const sidebarHTML = `

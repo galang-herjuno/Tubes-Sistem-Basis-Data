@@ -2,46 +2,67 @@ document.addEventListener('DOMContentLoaded', () => {
     loadInventory();
 });
 
-async function loadInventory() {
+let currentInventoryPage = 1;
+
+async function loadInventory(page = 1) {
+    currentInventoryPage = page;
     try {
-        const res = await fetch('/api/inventory');
+        const res = await fetch(`/api/inventory?page=${page}&limit=10`);
         if (res.ok) {
-            const items = await res.json();
+            const result = await res.json();
+            const items = result.data;
+            const pagination = result.pagination;
+
             const tbody = document.querySelector('#inventory-view table tbody');
             if (tbody) {
                 tbody.innerHTML = '';
-                items.forEach(i => {
-                    const isLowStock = i.stok < 10;
-                    const rowClass = isLowStock ? 'style="color:#ef4444; font-weight:bold;"' : '';
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${i.nama_barang}</td>
-                        <td>${i.kategori}</td>
-                        <td ${rowClass}>${i.stok} ${i.satuan} ${isLowStock ? '<i class="fa-solid fa-triangle-exclamation"></i>' : ''}</td>
-                        <td>${formatCurrency(i.harga_satuan)}</td>
-                        <td>
-                            <button onclick="openEditItemModal(${JSON.stringify(i).replace(/"/g, '&quot;')})" 
-                                class="btn-xs" style="background:rgba(255,255,255,0.1); border:none; color:white; cursor:pointer; margin-right:5px;">
-                                <i class="fa-solid fa-pen"></i>
-                            </button>
-                            <button onclick="deleteItem(${i.id_barang})" 
-                                class="btn-xs" style="background:rgba(239,68,68,0.2); border:none; color:#ef4444; cursor:pointer;">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:#94a3b8">No items found</td></tr>';
+                } else {
+                    items.forEach(i => {
+                        const isLowStock = i.stok < 10;
+                        const rowClass = isLowStock ? 'style="color:#ef4444; font-weight:bold;"' : '';
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${i.nama_barang}</td>
+                            <td>${i.kategori}</td>
+                            <td ${rowClass}>${i.stok} ${i.satuan} ${isLowStock ? '<i class="fa-solid fa-triangle-exclamation"></i>' : ''}</td>
+                            <td>${formatCurrency(i.harga_satuan)}</td>
+                            <td>
+                                <button onclick="openEditItemModal(${JSON.stringify(i).replace(/"/g, '&quot;')})" 
+                                    class="btn-xs" style="background:var(--primary-color); border:none; color:white; cursor:pointer; margin-right:5px; padding:0.4rem 0.8rem; border-radius:4px;">
+                                    <i class="fa-solid fa-pen"></i> Edit
+                                </button>
+                                <button onclick="deleteItem(${i.id_barang})" 
+                                    class="btn-xs" style="background:rgba(239,68,68,0.2); border:none; color:#ef4444; cursor:pointer; padding:0.4rem 0.8rem; border-radius:4px;">
+                                    <i class="fa-solid fa-trash"></i> Delete
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
             }
 
-            // Update Low Stock Counter in Layout/Dashboard logic? 
-            // Since we are in modular view, layout might not have access to dashboard counters.
-            // That's fine, dashboard counters are on dashboard page.
+            // Pagination Controls
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const pageInfo = document.getElementById('page-info');
+
+            if (prevBtn && nextBtn && pageInfo) {
+                prevBtn.disabled = pagination.currentPage <= 1;
+                nextBtn.disabled = pagination.currentPage >= pagination.totalPages;
+                pageInfo.textContent = `Page ${pagination.currentPage} of ${pagination.totalPages}`;
+            }
         }
     } catch (err) {
         console.error('Error loading inventory:', err);
     }
 }
+
+window.changeInventoryPage = (delta) => {
+    loadInventory(currentInventoryPage + delta);
+};
 
 // Add Item
 const addItemForm = document.getElementById('addItemForm');
@@ -67,7 +88,7 @@ if (addItemForm) {
                 alert('Item added successfully');
                 closeModal('addItemModal');
                 addItemForm.reset();
-                loadInventory();
+                loadInventory(currentInventoryPage);
             } else {
                 alert(result.message);
             }
@@ -100,7 +121,7 @@ if (editItemForm) {
         };
 
         try {
-            const res = await fetch(`/api/inventory/${id}`, {
+            const res = await fetch(`/api/barang/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -108,7 +129,7 @@ if (editItemForm) {
             if (res.ok) {
                 alert('Item updated');
                 closeModal('editItemModal');
-                loadInventory();
+                loadInventory(currentInventoryPage);
             }
         } catch (err) {
             console.error(err);
@@ -120,9 +141,9 @@ if (editItemForm) {
 async function deleteItem(id) {
     if (confirm('Are you sure you want to delete this item?')) {
         try {
-            const res = await fetch(`/api/inventory/${id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/barang/${id}`, { method: 'DELETE' });
             if (res.ok) {
-                loadInventory();
+                loadInventory(currentInventoryPage);
             } else {
                 alert('Failed to delete item');
             }

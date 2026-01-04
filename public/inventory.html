@@ -45,6 +45,15 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="pagination-controls"
+                    style="margin-top:1rem; display:flex; justify-content:space-between; align-items:center; padding-top:1rem; border-top:1px solid var(--glass-border);">
+                    <button id="prev-btn" onclick="changeInventoryPage(-1)"
+                        style="background:transparent; color:var(--text-color); border:1px solid var(--glass-border); padding:0.5rem 1rem; border-radius:6px; cursor:pointer;"
+                        disabled>Previous</button>
+                    <span id="page-info" style="color:var(--text-muted)">Page 1</span>
+                    <button id="next-btn" onclick="changeInventoryPage(1)"
+                        style="background:transparent; color:var(--text-color); border:1px solid var(--glass-border); padding:0.5rem 1rem; border-radius:6px; cursor:pointer;">Next</button>
+                </div>
             </div>
         </div>
     </main>

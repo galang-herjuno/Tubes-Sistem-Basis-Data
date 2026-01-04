@@ -162,6 +162,18 @@ CREATE TABLE detail_transaksi (
 );
 
 -- ==========================================
+-- D. PERFORMANCE INDEXES
+-- ==========================================
+CREATE INDEX idx_pendaftaran_tgl ON pendaftaran(tgl_kunjungan);
+CREATE INDEX idx_pendaftaran_status ON pendaftaran(status);
+CREATE INDEX idx_transaksi_tgl ON transaksi(tgl_transaksi);
+CREATE INDEX idx_barang_stok ON barang(stok);
+CREATE INDEX idx_pemilik_nama ON pemilik(nama_pemilik);
+CREATE INDEX idx_hewan_nama ON hewan(nama_hewan);
+CREATE INDEX idx_pegawai_jabatan ON pegawai(jabatan);
+CREATE INDEX idx_pendaftaran_filter ON pendaftaran(status, tgl_kunjungan);
+
+-- ==========================================
 -- END OF SCHEMA DEFINITION
 -- ==========================================
 -- 

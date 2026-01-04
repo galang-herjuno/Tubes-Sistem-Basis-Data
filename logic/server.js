@@ -386,7 +386,8 @@ app.get('/api/dashboard/stats', authMiddleware, async (req, res) => {
     try {
         const [totalPatients] = await db.query('SELECT COUNT(*) as count FROM hewan');
         const [lowStock] = await db.query('SELECT COUNT(*) as count FROM barang WHERE stok < 5');
-        const [revenue] = await db.query('SELECT COALESCE(SUM(total_biaya), 0) as total FROM transaksi WHERE DATE(tgl_transaksi) = CURRENT_DATE');
+        // Optimized SARGable query for revenue (Index-friendly)
+        const [revenue] = await db.query('SELECT COALESCE(SUM(total_biaya), 0) as total FROM transaksi WHERE tgl_transaksi >= CURRENT_DATE AND tgl_transaksi < CURRENT_DATE + INTERVAL 1 DAY');
         const [activeStaff] = await db.query('SELECT COUNT(*) as count FROM pegawai WHERE id_user IS NOT NULL');
 
         res.json({
@@ -431,10 +432,11 @@ app.get('/api/dashboard/queue', authMiddleware, async (req, res) => {
         const params = [];
 
         // Date Filter
+        // Date Filter (Optimized for Index Usage)
         if (dateFilter === 'today') {
-            query += ` AND DATE(p.tgl_kunjungan) = CURRENT_DATE`;
+            query += ` AND p.tgl_kunjungan >= CURRENT_DATE AND p.tgl_kunjungan < CURRENT_DATE + INTERVAL 1 DAY`;
         } else if (dateFilter === 'tomorrow') {
-            query += ` AND DATE(p.tgl_kunjungan) = DATE_ADD(CURRENT_DATE, INTERVAL 1 DAY)`;
+            query += ` AND p.tgl_kunjungan >= CURRENT_DATE + INTERVAL 1 DAY AND p.tgl_kunjungan < CURRENT_DATE + INTERVAL 2 DAY`;
         } else if (dateFilter === 'week') {
             query += ` AND YEARWEEK(p.tgl_kunjungan, 1) = YEARWEEK(CURRENT_DATE, 1)`;
         } else if (dateFilter === 'month') {
@@ -553,6 +555,7 @@ app.get('/api/owners/:id', authMiddleware, async (req, res) => {
 });
 
 // Get All Owners (with Pet count)
+// Get All Owners (Optimized: Divide & Conquer Strategy)
 app.get('/api/owners', authMiddleware, async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -560,37 +563,57 @@ app.get('/api/owners', authMiddleware, async (req, res) => {
         const search = req.query.search || '';
         const offset = (page - 1) * limit;
 
-        let countQuery = 'SELECT COUNT(*) as total FROM pemilik p';
-        let dataQuery = `
-            SELECT p.*, COUNT(h.id_hewan) as pet_count 
-            FROM pemilik p 
-            LEFT JOIN hewan h ON p.id_pemilik = h.id_pemilik
-        `;
-
+        // 1. Fetch Owners First (Avoiding massive LEFT JOIN)
+        let ownerQuery = 'SELECT * FROM pemilik';
+        let countQuery = 'SELECT COUNT(*) as total FROM pemilik';
         let queryParams = [];
         let countParams = [];
 
         if (search) {
-            const searchClause = ' WHERE p.nama_pemilik LIKE ?';
+            // Optimized Search: Prefix match only for Index usage
+            const searchClause = ' WHERE nama_pemilik LIKE ?';
+            ownerQuery += searchClause;
             countQuery += searchClause;
-            dataQuery += searchClause;
-            countParams.push(`%${search}%`);
-            queryParams.push(`%${search}%`);
+            // Use prefix wildcard (search%) instead of %search%
+            queryParams.push(`${search}%`);
+            countParams.push(`${search}%`);
         }
 
-        dataQuery += ' GROUP BY p.id_pemilik ORDER BY p.id_pemilik DESC LIMIT ? OFFSET ?';
+        ownerQuery += ' ORDER BY id_pemilik DESC LIMIT ? OFFSET ?';
         queryParams.push(limit, offset);
 
-        // Get Total Count
+        // Get Total Count (Cheap count on single table)
         const [countResult] = await db.query(countQuery, countParams);
         const totalRecords = countResult[0].total;
         const totalPages = Math.ceil(totalRecords / limit);
 
-        // Get Paginated Data
-        const [rows] = await db.query(dataQuery, queryParams);
+        // Fetch Paginated Owners
+        const [owners] = await db.query(ownerQuery, queryParams);
+
+        if (owners.length === 0) {
+            return res.json({
+                data: [],
+                pagination: { totalRecords, totalPages, currentPage: page, limit }
+            });
+        }
+
+        // 2. Fetch Pet Counts for these specific owners (IN clause)
+        const ownerIds = owners.map(o => o.id_pemilik);
+        const [petCounts] = await db.query(`
+            SELECT id_pemilik, COUNT(*) as count 
+            FROM hewan 
+            WHERE id_pemilik IN (?) 
+            GROUP BY id_pemilik
+        `, [ownerIds]);
+
+        // 3. Map Counts to Owners
+        const mappedOwners = owners.map(o => {
+            const countData = petCounts.find(c => c.id_pemilik === o.id_pemilik);
+            return { ...o, pet_count: countData ? countData.count : 0 };
+        });
 
         res.json({
-            data: rows,
+            data: mappedOwners,
             pagination: {
                 totalRecords,
                 totalPages,
@@ -918,10 +941,44 @@ app.put('/api/pegawai/profile', authMiddleware, async (req, res) => {
 
 // 6. Inventory
 // Get All Items
+// Get All Items (Paginated)
 app.get('/api/inventory', authMiddleware, async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM barang WHERE is_active = 1 ORDER BY stok ASC');
-        res.json(rows);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const search = req.query.search || '';
+        const offset = (page - 1) * limit;
+
+        let query = 'SELECT * FROM barang WHERE is_active = 1';
+        let countQuery = 'SELECT COUNT(*) as total FROM barang WHERE is_active = 1';
+        let params = [];
+        let countParams = [];
+
+        if (search) {
+            query += ' AND nama_barang LIKE ?';
+            countQuery += ' AND nama_barang LIKE ?';
+            params.push(`%${search}%`);
+            countParams.push(`%${search}%`);
+        }
+
+        query += ' ORDER BY stok ASC LIMIT ? OFFSET ?';
+        params.push(limit, offset);
+
+        const [countResult] = await db.query(countQuery, countParams);
+        const totalRecords = countResult[0].total;
+        const totalPages = Math.ceil(totalRecords / limit);
+
+        const [rows] = await db.query(query, params);
+
+        res.json({
+            data: rows,
+            pagination: {
+                totalRecords,
+                totalPages,
+                currentPage: page,
+                limit
+            }
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to fetch inventory' });
