@@ -832,7 +832,7 @@ app.delete('/api/pets/:id', authMiddleware, async (req, res) => {
 
 // 5. Staff Management
 // Get All Staff
-app.get('/api/staff', authMiddleware, async (req, res) => {
+app.get('/api/staff', authMiddleware, authorizeRole('Admin'), async (req, res) => {
     try {
         const query = `
             SELECT peg.*, u.username, u.role as account_role, u.id_user 
@@ -848,11 +848,8 @@ app.get('/api/staff', authMiddleware, async (req, res) => {
 });
 
 // Create Staff (Transaction: Create User -> Create Employee)
-app.post('/api/staff', authMiddleware, async (req, res) => {
-    // Only Admin can add staff
-    if (req.session.role !== 'Admin') {
-        return res.status(403).json({ message: 'Access denied' });
-    }
+app.post('/api/staff', authMiddleware, authorizeRole('Admin'), async (req, res) => {
+    // Only Admin can add staff (Middleware handles this now)
 
     const { username, password, role, nama_lengkap, jabatan, spesialisasi, no_hp } = req.body;
 
@@ -1028,7 +1025,7 @@ app.put('/api/pegawai/profile', authMiddleware, async (req, res) => {
 
 // 6. Inventory
 // Get All Items (Paginated)
-app.get('/api/inventory', authMiddleware, async (req, res) => {
+app.get('/api/inventory', authMiddleware, authorizeRole('Admin', 'Resepsionis'), async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
@@ -1131,7 +1128,7 @@ app.delete('/api/barang/:id', authMiddleware, async (req, res) => {
 
 // 7. Transactions (Enhanced with CRUD)
 // Get Recent Transactions with Details
-app.get('/api/transactions', authMiddleware, async (req, res) => {
+app.get('/api/transactions', authMiddleware, authorizeRole('Admin', 'Resepsionis'), async (req, res) => {
     try {
         const query = `
             SELECT t.*, p.nama_pemilik 
@@ -1149,7 +1146,7 @@ app.get('/api/transactions', authMiddleware, async (req, res) => {
 });
 
 // Get Transaction Details
-app.get('/api/transactions/:id/details', authMiddleware, async (req, res) => {
+app.get('/api/transactions/:id/details', authMiddleware, authorizeRole('Admin', 'Resepsionis'), async (req, res) => {
     try {
         const [transaction] = await db.query(
             'SELECT t.*, p.nama_pemilik, p.no_hp FROM transaksi t LEFT JOIN pemilik p ON t.id_pemilik = p.id_pemilik WHERE t.id_transaksi = ?',

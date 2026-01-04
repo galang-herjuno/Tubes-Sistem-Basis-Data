@@ -29,6 +29,8 @@ async function loadPatients() {
                             <td>${o.nama_pemilik}</td>
                             <td>${o.no_hp || '-'}</td>
                             <td>${o.pet_count} Pets</td>
+                            <td>#${o.id_pemilik}</td>
+                            <td>${new Date(o.created_at).toLocaleDateString()}</td>
                             <td>
                                 <button onclick="viewOwnerDetails(${o.id_pemilik})" class="btn-xs" style="background:var(--primary-color); border:none; color:var(--bg-color); cursor:pointer;">
                                     View Details
