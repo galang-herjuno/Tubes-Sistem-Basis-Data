@@ -18,8 +18,8 @@ async function loadTransactions() {
                         <td style="font-weight:bold; color:var(--accent-color);">${formatCurrency(t.total_biaya)}</td>
                         <td>${t.metode_bayar}</td>
                         <td>
-                            <button onclick="viewBillDetail(${t.id_transaksi})" class="btn-xs" style="background:var(--primary-color); border:none; color:var(--bg-color); cursor:pointer;">
-                                Detail
+<button onclick="viewBillDetail(${t.id_transaksi})" class="btn-action">
+                                <i class="fa-solid fa-eye"></i> Detail
                             </button>
                         </td>
                     `;
@@ -34,11 +34,11 @@ async function loadTransactions() {
 
 async function viewBillDetail(id) {
     try {
-        const res = await fetch(`/api/transactions/${id}`);
+        const res = await fetch(`/api/transactions/${id}/details`);
         if (res.ok) {
             const data = await res.json();
             const tx = data.transaction;
-            const items = data.items;
+            const items = data.details;
 
             let itemHtml = '<table style="width:100%; border-collapse:collapse; margin-top:1rem;"><thead><tr style="border-bottom:1px solid #ddd; text-align:left;"><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>';
 
