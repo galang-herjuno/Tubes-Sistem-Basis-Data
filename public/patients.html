@@ -56,7 +56,20 @@
                 </div>
 
                 <!-- Pagination Controls -->
-                <!-- Pagination Removed -->
+                <div class="pagination-controls"
+                    style="display:flex; justify-content:center; align-items:center; gap:1rem; margin-top:1.5rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.05);">
+                    <button id="prev-btn" onclick="changePatientPage(-1)" class="btn-xs"
+                        style="background:rgba(255,255,255,0.1); color:white; border:none; padding:0.5rem 1rem; border-radius:6px; cursor:pointer;"
+                        disabled>
+                        <i class="fa-solid fa-chevron-left"></i> Previous
+                    </button>
+                    <span id="page-info" style="color:var(--text-muted); font-size:0.9rem;">Page 1 of 1</span>
+                    <button id="next-btn" onclick="changePatientPage(1)" class="btn-xs"
+                        style="background:rgba(255,255,255,0.1); color:white; border:none; padding:0.5rem 1rem; border-radius:6px; cursor:pointer;"
+                        disabled>
+                        Next <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </main>

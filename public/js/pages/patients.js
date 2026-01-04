@@ -3,15 +3,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+let currentPatientPage = 1;
+window.totalPatientPages = 1; // Defined on window to avoid scope issues
+
 async function loadPatients() {
     const searchInput = document.getElementById('owner-search-input');
     const searchTerm = searchInput ? searchInput.value : '';
 
     try {
-        const res = await fetch(`/api/owners?search=${searchTerm}`);
+        const res = await fetch(`/api/owners?page=${currentPatientPage}&limit=10&search=${searchTerm}`);
         if (res.ok) {
             const result = await res.json();
             const owners = result.data;
+            const pagination = result.pagination;
 
             const tbody = document.querySelector('table tbody');
             if (tbody) {
@@ -38,6 +42,18 @@ async function loadPatients() {
                     });
                 }
             }
+
+            // Update Pagination Controls
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const pageInfo = document.getElementById('page-info');
+
+            if (prevBtn && nextBtn && pageInfo) {
+                window.totalPatientPages = pagination.totalPages;
+                prevBtn.disabled = pagination.currentPage === 1;
+                nextBtn.disabled = pagination.currentPage === pagination.totalPages || pagination.totalRecords === 0;
+                pageInfo.textContent = `Page ${pagination.currentPage} of ${pagination.totalPages || 1}`;
+            }
         }
     } catch (err) {
         console.error('Error loading patients:', err);
@@ -48,8 +64,17 @@ let searchTimeout;
 function searchOwners() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
+        currentPatientPage = 1;
         loadPatients();
     }, 500);
+}
+
+function changePatientPage(delta) {
+    const newPage = currentPatientPage + delta;
+    if (newPage > 0 && newPage <= window.totalPatientPages) {
+        currentPatientPage = newPage;
+        loadPatients();
+    }
 }
 
 async function viewOwnerDetails(id) {

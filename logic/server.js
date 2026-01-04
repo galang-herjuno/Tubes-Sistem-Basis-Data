@@ -592,55 +592,71 @@ app.get('/api/owners/:id', authMiddleware, async (req, res) => {
 
 // Get All Owners (with Pet count)
 // Get All Owners (Optimized: Divide & Conquer Strategy)
-// Get All Owners (No Pagination)
 app.get('/api/owners', authMiddleware, async (req, res) => {
     try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
         const search = req.query.search || '';
+        const offset = (page - 1) * limit;
 
-        // 1. Fetch Owners (All)
+        // 1. Fetch Owners First (Avoiding massive LEFT JOIN)
         let ownerQuery = 'SELECT * FROM pemilik';
+        let countQuery = 'SELECT COUNT(*) as total FROM pemilik';
         let queryParams = [];
+        let countParams = [];
 
         if (search) {
+            // Optimized Search: Prefix match only for Index usage
             const searchClause = ' WHERE nama_pemilik LIKE ?';
             ownerQuery += searchClause;
+            countQuery += searchClause;
+            // Use prefix wildcard (search%) instead of %search%
             queryParams.push(`${search}%`);
+            countParams.push(`${search}%`);
         }
 
-        ownerQuery += ' ORDER BY id_pemilik DESC';
+        ownerQuery += ' ORDER BY id_pemilik DESC LIMIT ? OFFSET ?';
+        queryParams.push(limit, offset);
 
+        // Get Total Count (Cheap count on single table)
+        const [countResult] = await db.query(countQuery, countParams);
+        const totalRecords = countResult[0].total;
+        const totalPages = Math.ceil(totalRecords / limit);
+
+        // Fetch Paginated Owners
         const [owners] = await db.query(ownerQuery, queryParams);
 
         if (owners.length === 0) {
-            return res.json({ data: [] });
+            return res.json({
+                data: [],
+                pagination: { totalRecords, totalPages, currentPage: page, limit }
+            });
         }
 
-        // 2. Fetch Pet Counts for these owners (Chunked IN clause for massive data)
+        // 2. Fetch Pet Counts for these specific owners (IN clause)
         const ownerIds = owners.map(o => o.id_pemilik);
-        const chunkSize = 1000;
-        const petCountMap = {};
+        const [petCounts] = await db.query(`
+            SELECT id_pemilik, COUNT(*) as count 
+            FROM hewan 
+            WHERE id_pemilik IN (?) 
+            GROUP BY id_pemilik
+        `, [ownerIds]);
 
-        for (let i = 0; i < ownerIds.length; i += chunkSize) {
-            const chunk = ownerIds.slice(i, i + chunkSize);
-            if (chunk.length === 0) continue;
+        // 3. Map Counts to Owners
+        const mappedOwners = owners.map(o => {
+            const countData = petCounts.find(c => c.id_pemilik === o.id_pemilik);
+            return { ...o, pet_count: countData ? countData.count : 0 };
+        });
 
-            const [chunkCounts] = await db.query(`
-                SELECT id_pemilik, COUNT(*) as count 
-                FROM hewan 
-                WHERE id_pemilik IN (?) 
-                GROUP BY id_pemilik
-             `, [chunk]);
-
-            chunkCounts.forEach(c => petCountMap[c.id_pemilik] = c.count);
-        }
-
-        // Merge
-        const result = owners.map(o => ({
-            ...o,
-            pet_count: petCountMap[o.id_pemilik] || 0
-        }));
-
-        res.json({ data: result });
+        res.json({
+            data: mappedOwners,
+            pagination: {
+                totalRecords,
+                totalPages,
+                currentPage: page,
+                limit
+            }
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to fetch owners' });
