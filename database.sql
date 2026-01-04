@@ -138,6 +138,8 @@ CREATE TABLE transaksi (
     tgl_transaksi DATETIME DEFAULT CURRENT_TIMESTAMP,
     total_biaya DECIMAL(12,2) DEFAULT 0,
     diskon DECIMAL(12,2) DEFAULT 0,
+    tipe_diskon ENUM('nominal', 'persen') DEFAULT 'nominal',
+    input_diskon DECIMAL(12,2) DEFAULT 0,
     metode_bayar ENUM('Cash', 'Debit', 'QRIS', 'Transfer') NOT NULL,
     FOREIGN KEY (id_daftar) REFERENCES pendaftaran(id_daftar) ON DELETE SET NULL,
     FOREIGN KEY (id_pemilik) REFERENCES pemilik(id_pemilik) ON DELETE SET NULL

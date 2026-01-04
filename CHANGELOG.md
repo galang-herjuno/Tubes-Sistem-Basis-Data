@@ -229,3 +229,50 @@ Transactions (transaksi) → Transaction Details (detail_transaksi)
 ✅ Improved customer satisfaction
 ✅ Modern, professional image
 ✅ Reduced phone inquiries
+
+---
+
+## 2026-01-04 - Billing & Dashboard UX Improvements
+
+### Database Schema Updates
+1. **Updated `transaksi` table**
+   - **Modified**: `metode_bayar` column now saves proper enum values ('Cash', 'Debit', 'QRIS', 'Transfer') correctly.
+   - **Removed**: `tipe_diskon` and `input_diskon` columns were cleaned up to simplify the schema, as per the decision to only store the final `diskon` (nominal) amount in the backend history.
+   - **Synced**: Database structure is now fully verified against the provided schema screenshot.
+
+2. **Updated `barang` table**
+   - **Added**: `is_active` (BOOLEAN) column to support **Soft Delete**.
+   - **Purpose**: Prevents foreign key constraint errors when deleting inventory items that are referenced in past transactions or prescriptions. Items are now archived instead of permanently deleted.
+
+### Backend API Updates
+
+#### Billing System (`/api/billing/generate`)
+- **Enhanced**: Now accepts `metode_bayar`, `tipe_diskon`, and `input_diskon` from the frontend.
+- **Improved**: Logic refactored to calculate final `total_biaya` and `diskon` (amount) accurately on the server side.
+- **Fix**: Resolved bug where `metode_bayar` was incorrectly saving 'nominal' or 'persen'. It now correctly maps to the selected payment method.
+
+#### Inventory Management (`/api/inventory`)
+- **Updated**: `GET` endpoint now filters for `is_active = 1`.
+- **Updated**: `DELETE` endpoint now performs a "Soft Delete" (`UPDATE barang SET is_active = 0`) instead of a hard delete.
+
+### Frontend Enhancements (`dashboard.js` & `dashboard.html`)
+
+#### 1. Advanced Billing Modal
+- **New Feature**: "Payment Method" selection dropdown (Cash, Debit, QRIS, Transfer).
+- **New Feature**: "Discount Type" toggle (Nominal vs Percentage).
+- **Real-time Calculation**: Total bill updates instantly when discount input changes.
+- **Layout Fixes**:
+  - Increased Modal width to `900px` for better readability.
+  - Fixed layout bugs where elements (buttons, total) were overflowing or misaligned.
+  - Improved spacing and visual hierarchy.
+
+#### 2. Dashboard UX
+- **Auto-Refresh**: Dashboard "Live Queue" and "Recent Transactions" now update **automatically** after a bill is confirmed.
+- **Immediate Feedback**: The "Bill" button in the queue immediately changes to "Paid" without requiring a page reload.
+
+#### 3. Bug Fixes
+- **Inventory Deletion**: Fixed "Cannot delete item" error by implementing soft delete.
+- **Data Integrity**: Cleaned up historical transaction data that had incorrect payment method labels with a one-time migration script.
+
+### Summary
+This update significantly improves the cashier workflow by adding flexible payment options, discount capabilities, and ensuring a smoother, error-free experience when managing inventory and generating bills.

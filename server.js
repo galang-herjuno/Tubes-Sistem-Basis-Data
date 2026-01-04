@@ -824,7 +824,7 @@ app.put('/api/pegawai/profile', authMiddleware, async (req, res) => {
 // Get All Items
 app.get('/api/inventory', authMiddleware, async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM barang ORDER BY stok ASC');
+        const [rows] = await db.query('SELECT * FROM barang WHERE is_active = 1 ORDER BY stok ASC');
         res.json(rows);
     } catch (err) {
         console.error(err);
@@ -869,6 +869,7 @@ app.put('/api/barang/:id', authMiddleware, async (req, res) => {
 });
 
 // Delete Item (Admin & Resepsionis only)
+// Delete Item (Soft Delete - Admin & Resepsionis only)
 app.delete('/api/barang/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const userRole = req.session.role;
@@ -879,32 +880,9 @@ app.delete('/api/barang/:id', authMiddleware, async (req, res) => {
     }
 
     try {
-        // Check if item is used in prescriptions
-        const [prescriptions] = await db.query(
-            'SELECT COUNT(*) as count FROM resep_obat WHERE id_barang = ?',
-            [id]
-        );
-
-        if (prescriptions[0].count > 0) {
-            return res.status(400).json({
-                message: 'Cannot delete item: it is referenced in medical prescriptions'
-            });
-        }
-
-        // Check if item is used in transactions
-        const [transactions] = await db.query(
-            'SELECT COUNT(*) as count FROM detail_transaksi WHERE id_barang = ?',
-            [id]
-        );
-
-        if (transactions[0].count > 0) {
-            return res.status(400).json({
-                message: 'Cannot delete item: it is referenced in transactions'
-            });
-        }
-
-        await db.query('DELETE FROM barang WHERE id_barang = ?', [id]);
-        res.json({ message: 'Item deleted successfully' });
+        // Soft delete: Mark as inactive instead of deleting row
+        await db.query('UPDATE barang SET is_active = 0 WHERE id_barang = ?', [id]);
+        res.json({ message: 'Item deleted (archived) successfully' });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Failed to delete item' });
@@ -1253,7 +1231,7 @@ app.post('/api/medical-records', authMiddleware, async (req, res) => {
 
 // POST Generate Bill - Confirm and create transaction
 app.post('/api/billing/generate', authMiddleware, async (req, res) => {
-    const { id_daftar } = req.body;
+    const { id_daftar, diskon = 0, tipe_diskon = 'nominal', metode_bayar = 'Cash' } = req.body;
     const userRole = req.session.role;
 
     // Only Admin and Resepsionis can generate bills
@@ -1324,14 +1302,15 @@ app.post('/api/billing/generate', authMiddleware, async (req, res) => {
 
         // Add service to items
         if (selectedService) {
-            totalBiaya += selectedService.harga_dasar;
+            const hargaLayanan = parseFloat(selectedService.harga_dasar);
+            totalBiaya += hargaLayanan;
             items.push({
                 jenis_item: 'Layanan',
                 id_layanan: selectedService.id_layanan,
                 id_barang: null,
-                harga_saat_ini: selectedService.harga_dasar,
+                harga_saat_ini: hargaLayanan,
                 qty: 1,
-                subtotal: selectedService.harga_dasar
+                subtotal: hargaLayanan
             });
         }
 
@@ -1346,7 +1325,9 @@ app.post('/api/billing/generate', authMiddleware, async (req, res) => {
 
         // Add prescriptions to items
         for (const rx of prescriptions) {
-            const subtotal = rx.harga_satuan * rx.jumlah;
+            const hargaSatuan = parseFloat(rx.harga_satuan);
+            const qty = parseInt(rx.jumlah);
+            const subtotal = hargaSatuan * qty;
             totalBiaya += subtotal;
             items.push({
                 jenis_item: 'Barang',
@@ -1359,10 +1340,24 @@ app.post('/api/billing/generate', authMiddleware, async (req, res) => {
         }
 
         // Create transaction
+        // Calculate Discount
+        const inputDiskon = parseFloat(diskon) || 0;
+        let discountAmount = 0;
+
+        if (tipe_diskon === 'persen') {
+            // Percent (e.g., 10 means 10%)
+            discountAmount = totalBiaya * (inputDiskon / 100);
+        } else {
+            // Nominal
+            discountAmount = inputDiskon;
+        }
+
+        const finalTotal = Math.max(0, totalBiaya - discountAmount);
+
         const [txResult] = await connection.query(`
-            INSERT INTO transaksi(id_daftar, id_pemilik, tgl_transaksi, total_biaya, diskon, metode_bayar)
-        VALUES(?, ?, NOW(), ?, 0, 'Cash')
-            `, [id_daftar, id_pemilik, totalBiaya]);
+            INSERT INTO transaksi(id_daftar, id_pemilik, tgl_transaksi, total_biaya, diskon, tipe_diskon, input_diskon, metode_bayar)
+        VALUES(?, ?, NOW(), ?, ?, ?, ?, ?)
+            `, [id_daftar, id_pemilik, finalTotal, discountAmount, tipe_diskon, inputDiskon, metode_bayar]);
 
         const transactionId = txResult.insertId;
 
@@ -1378,7 +1373,11 @@ app.post('/api/billing/generate', authMiddleware, async (req, res) => {
         res.json({
             message: 'Transaction generated successfully',
             id_transaksi: transactionId,
-            total_biaya: totalBiaya
+            total_biaya: finalTotal,
+            diskon: discountAmount,
+            tipe_diskon: tipe_diskon,
+            input_diskon: inputDiskon,
+            metode_bayar: metode_bayar
         });
 
     } catch (err) {

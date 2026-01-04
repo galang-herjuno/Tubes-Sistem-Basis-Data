@@ -1553,7 +1553,7 @@ function showBillPreviewModal(data, appointmentId) {
     });
 
     const modalHTML = `
-        <div style="background:rgba(30, 41, 59, 0.98); backdrop-filter:blur(10px); border:1px solid rgba(245, 158, 11, 0.3); border-radius:12px; padding:2rem; max-width:650px; margin:0 auto; box-shadow:0 20px 60px rgba(0,0,0,0.7);">
+        <div style="background:rgba(30, 41, 59, 0.98); backdrop-filter:blur(10px); border:1px solid rgba(245, 158, 11, 0.3); border-radius:12px; padding:2rem; max-width:900px; margin:0 auto; box-shadow:0 20px 60px rgba(0,0,0,0.7);">
             
             <!-- Header -->
             <div style="text-align:center; margin-bottom:1.5rem; border-bottom:2px solid #f59e0b; padding-bottom:1rem;">
@@ -1612,11 +1612,43 @@ function showBillPreviewModal(data, appointmentId) {
                 </table>
             </div>
 
+            <!-- Discount -->
+            <!-- Discount -->
+            <div style="background:rgba(255,255,255,0.03); border-radius:8px; padding:1rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; gap: 1rem;">
+                <div style="flex:1;">
+                    <label style="color:#94a3b8; font-size:0.85rem; display:block; margin-bottom:0.3rem;">Tipe Diskon</label>
+                    <select id="bill-discount-type" 
+                        style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); color:white; padding:0.5rem; border-radius:6px; width:100%; font-size:0.9rem;"
+                        onchange="window.updatePreviewTotal(${data.total_biaya})">
+                        <option value="nominal">Nominal (Rp)</option>
+                        <option value="persen">Persen (%)</option>
+                    </select>
+                </div>
+                <div style="flex:1;">
+                    <label style="color:#94a3b8; font-size:0.85rem; display:block; margin-bottom:0.3rem;">Nilai Diskon</label>
+                    <input type="number" id="bill-discount-input" value="0" min="0" 
+                        style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); color:white; padding:0.5rem; border-radius:6px; width:100%; text-align:right; font-weight:600;"
+                        oninput="window.updatePreviewTotal(${data.total_biaya})">
+                </div>
+            </div>
+
+            <!-- Payment Method -->
+            <div style="background:rgba(255,255,255,0.03); border-radius:8px; padding:1rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+                <label style="color:#94a3b8; font-size:0.95rem;">Metode Pembayaran</label>
+                <select id="bill-payment-method" 
+                    style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); color:white; padding:0.5rem; border-radius:6px; width:200px; font-size:0.95rem; font-weight:600;">
+                    <option value="Cash">Cash</option>
+                    <option value="Debit">Debit</option>
+                    <option value="QRIS">QRIS</option>
+                    <option value="Transfer">Transfer</option>
+                </select>
+            </div>
+
             <!-- Total -->
             <div style="background:#f59e0b; color:#1e293b; padding:1.25rem; border-radius:8px; margin-bottom:1rem;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span style="font-weight:700; font-size:1.1rem;">TOTAL TAGIHAN</span>
-                    <span style="font-weight:700; font-size:1.5rem;">${formatCurrency(data.total_biaya)}</span>
+                    <span id="bill-total-display" style="font-weight:700; font-size:1.5rem;">${formatCurrency(data.total_biaya)}</span>
                 </div>
             </div>
 
@@ -1663,20 +1695,56 @@ window.closeBillPreviewModal = () => {
     }
 };
 
+// Update Preview Total
+// Update Preview Total
+window.updatePreviewTotal = (originalTotal) => {
+    const typeEl = document.getElementById('bill-discount-type');
+    const inputEl = document.getElementById('bill-discount-input');
+
+    if (!typeEl || !inputEl) return;
+
+    const type = typeEl.value;
+    let input = parseFloat(inputEl.value) || 0;
+
+    let discountAmount = 0;
+    if (type === 'persen') {
+        if (input > 100) input = 100; // Cap at 100%
+        discountAmount = originalTotal * (input / 100);
+    } else {
+        if (input > originalTotal) input = originalTotal; // Cap at total
+        discountAmount = input;
+    }
+
+    const final = Math.max(0, originalTotal - discountAmount);
+    const display = document.getElementById('bill-total-display');
+    if (display) display.textContent = formatCurrency(final);
+};
+
 // Confirm and Generate Bill
 window.confirmGenerateBill = async (appointmentId) => {
     try {
+        const discountType = document.getElementById('bill-discount-type').value;
+        const discountInput = parseFloat(document.getElementById('bill-discount-input').value) || 0;
+        const paymentMethod = document.getElementById('bill-payment-method').value;
+
         const res = await fetch('/api/billing/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_daftar: appointmentId })
+            body: JSON.stringify({
+                id_daftar: appointmentId,
+                diskon: discountInput,
+                tipe_diskon: discountType,
+                metode_bayar: paymentMethod
+            })
         });
 
         const result = await res.json();
         if (res.ok) {
             closeBillPreviewModal();
-            showBillSuccessModal(result.total_biaya, result.id_transaksi, 'Pet');
+            showBillSuccessModal(result.total_biaya, result.id_transaksi, 'Pet', result.diskon, result.tipe_diskon, result.input_diskon);
             loadTransactions();
+            if (typeof fetchQueue === 'function') fetchQueue();
+            if (typeof loadDashboardStats === 'function') loadDashboardStats();
         } else {
             alert('❌ Error: ' + result.message);
         }
@@ -1688,28 +1756,35 @@ window.confirmGenerateBill = async (appointmentId) => {
 
 
 // Show Bill Success Modal
-function showBillSuccessModal(totalBiaya, transactionId, petName) {
+function showBillSuccessModal(totalBiaya, transactionId, petName, discountAmount = 0, discountType = 'nominal', discountInput = 0) {
     const amount = parseFloat(totalBiaya);
+    const disc = parseFloat(discountAmount) || 0;
+
+    let discountRow = '';
+    if (disc > 0) {
+        const label = discountType === 'persen' ? `Diskon (${discountInput}%)` : 'Diskon';
+        discountRow = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:1rem;">
+                <span style="color:#94a3b8; font-size:1rem;">${label}</span>
+                <span style="color:#ef4444; font-weight:600; font-size:1rem;">-${formatCurrency(disc)}</span>
+            </div>
+        `;
+    }
 
     const modalHTML = `
         <div style="background:rgba(30, 41, 59, 0.95); backdrop-filter:blur(10px); border:1px solid rgba(245, 158, 11, 0.3); border-radius:12px; padding:2rem; max-width:500px; margin:2rem auto; box-shadow:0 20px 60px rgba(0,0,0,0.5); text-align:center;">
             <div style="width:80px; height:80px; background:#f59e0b; border-radius:50%; margin:0 auto 1.5rem; display:flex; align-items:center; justify-content:center; animation:scaleIn 0.3s ease;">
-                <i class="fa-solid fa-check" style="font-size:2.5rem; color:#1e293b;"></i>
+                <i class="fa-solid fa-check" style="color:#1e293b; font-size:2.5rem;"></i>
             </div>
+            <h2 style="color:#f59e0b; margin:0 0 0.5rem 0;">Transaction Generated!</h2>
+            <p style="color:#94a3b8; margin:0 0 2rem 0;">Bill for <strong>${petName}</strong> has been created successfully</p>
             
-            <h2 style="color:#f59e0b; margin:0 0 0.5rem 0; font-size:1.5rem;">
-                Transaction Generated!
-            </h2>
-            
-            <p style="color:#94a3b8; margin:0 0 1.5rem 0;">
-                Bill for <strong style="color:white;">${petName}</strong> has been created successfully
-            </p>
-            
-            <div style="background:rgba(255,255,255,0.05); border-radius:8px; padding:1.5rem; margin-bottom:1.5rem;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1);">
+            <div style="background:rgba(255,255,255,0.05); border-radius:8px; padding:1.5rem; margin-bottom:1.5rem; text-align:left;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:1rem;">
                     <span style="color:#94a3b8;">Transaction ID:</span>
-                    <span style="color:white; font-weight:600;">#${transactionId}</span>
+                    <span style="color:white; font-weight:600; font-family:monospace; font-size:1.1rem;">#${transactionId}</span>
                 </div>
+                ${discountRow}
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span style="color:#94a3b8; font-size:1.1rem;">Total Amount:</span>
                     <span style="color:#f59e0b; font-weight:700; font-size:1.5rem;">${formatCurrency(amount)}</span>
