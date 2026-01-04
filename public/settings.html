@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings | Paw Whisker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+        <header class="header">
+            <div>
+                <h2>Settings</h2>
+                <p class="date-display" id="current-date">Fetching date...</p>
+            </div>
+        </header>
+
+        <div id="settings-view" class="section-content section-active">
+            <div class="dashboard-grid">
+                <!-- Profile Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>My Profile</h3>
+                    </div>
+                    <div style="text-align:center; padding:1rem;">
+                        <div
+                            style="width:80px; height:80px; background:var(--primary-color); border-radius:50%; margin:0 auto 1rem; display:flex; align-items:center; justify-content:center; font-size:2rem; color:var(--bg-color);">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <h3 id="settings-username">Username</h3>
+                        <p id="settings-role" style="color:var(--text-muted);">Role</p>
+                    </div>
+                </div>
+
+                <!-- Password Change -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Change Password</h3>
+                    </div>
+                    <form id="changePasswordForm">
+                        <div class="input-group">
+                            <label>Current Password</label>
+                            <div style="position:relative;">
+                                <input type="password" id="current-password" required>
+                                <i class="fa-solid fa-eye" id="toggleCurrent"
+                                    onclick="togglePasswordVisibility('current-password', 'toggleCurrent')"
+                                    style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8;"></i>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>New Password</label>
+                            <div style="position:relative;">
+                                <input type="password" id="new-password" required>
+                                <i class="fa-solid fa-eye" id="toggleNew"
+                                    onclick="togglePasswordVisibility('new-password', 'toggleNew')"
+                                    style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8;"></i>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Confirm Password</label>
+                            <div style="position:relative;">
+                                <input type="password" id="confirm-password" required>
+                                <i class="fa-solid fa-eye" id="toggleConfirm"
+                                    onclick="togglePasswordVisibility('confirm-password', 'toggleConfirm')"
+                                    style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8;"></i>
+                            </div>
+                        </div>
+                        <button type="submit" class="cta-button" style="width:100%;">Update Password</button>
+                    </form>
+                </div>
+
+                <!-- Danger Zone (Admin Only?) Not really, maybe for everyone to self-delete? No, dangerous. Left minimal. -->
+            </div>
+        </div>
+    </main>
+
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script>
+    <script src="js/pages/settings.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patients & Owners | Paw Whisker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+        <header class="header">
+            <div>
+                <h2>Patients & Owners</h2>
+                <p class="date-display" id="current-date">Fetching date...</p>
+            </div>
+        </header>
+
+        <div id="patients-view" class="section-content section-active">
+            <div class="card">
+                <div class="card-header"
+                    style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                    <h3>Registered Owners</h3>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="owner-search-input" placeholder="Search owner..."
+                                onkeyup="searchOwners()" class="search-input">
+                        </div>
+                        <button onclick="openModal('addOwnerModal')" class="cta-button" style="padding:0.6rem 1rem;">
+                            <i class="fa-solid fa-user-plus"></i> Add Owner
+                        </button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Owner Name</th>
+                                <th>Contact</th>
+                                <th>Pets</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Controls -->
+                <div class="pagination-controls"
+                    style="display:flex; justify-content:center; align-items:center; gap:1rem; margin-top:1.5rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.05);">
+                    <button id="prev-btn" onclick="changePatientPage(-1)" class="btn-xs"
+                        style="background:rgba(255,255,255,0.1); color:white; border:none; padding:0.5rem 1rem; border-radius:6px; cursor:pointer;"
+                        disabled>
+                        <i class="fa-solid fa-chevron-left"></i> Previous
+                    </button>
+                    <span id="page-info" style="color:var(--text-muted); font-size:0.9rem;">Page 1 of 1</span>
+                    <button id="next-btn" onclick="changePatientPage(1)" class="btn-xs"
+                        style="background:rgba(255,255,255,0.1); color:white; border:none; padding:0.5rem 1rem; border-radius:6px; cursor:pointer;"
+                        disabled>
+                        Next <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <!-- Add Owner Modal -->
+    <div id="addOwnerModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-plus"></i> Add New Owner</h3>
+                <span class="close" onclick="closeModal('addOwnerModal')">&times;</span>
+            </div>
+            <form id="addOwnerForm">
+                <div class="input-group">
+                    <label>Full Name</label>
+                    <input type="text" id="owner-name" required>
+                </div>
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" id="owner-email" required placeholder="For login account">
+                </div>
+                <div class="input-group">
+                    <label>Phone Number</label>
+                    <input type="text" id="owner-phone" required>
+                </div>
+                <div class="input-group">
+                    <label>Address</label>
+                    <textarea id="owner-address" rows="2"></textarea>
+                </div>
+                <button type="submit" class="cta-button" style="width:100%">Save Owner</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Owner Details Modal -->
+    <div id="ownerDetailsModal" class="modal hidden">
+        <div class="modal-content" style="max-width:600px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-id-card"></i> Owner Details</h3>
+                <span class="close" onclick="closeModal('ownerDetailsModal')">&times;</span>
+            </div>
+            <div id="owner-details-content" style="padding:1rem 0;">
+                <!-- Content via JS -->
+            </div>
+            <div style="margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.1);">
+                <h4 style="margin-bottom:1rem;">Add New Pet</h4>
+                <form id="addPetForm" style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                    <input type="hidden" id="pet-owner-id">
+                    <div class="input-group">
+                        <label>Pet Name</label>
+                        <input type="text" id="pet-name" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Type</label>
+                        <select id="pet-type" class="status-select" required>
+                            <option value="Kucing">Cat</option>
+                            <option value="Anjing">Dog</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Breed</label>
+                        <input type="text" id="pet-breed">
+                    </div>
+                    <div class="input-group">
+                        <label>Gender</label>
+                        <select id="pet-gender" class="status-select" required>
+                            <option value="Jantan">Male</option>
+                            <option value="Betina">Female</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Birth Date</label>
+                        <input type="date" id="pet-dob"
+                            style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:white; border-radius:5px; color-scheme:dark;">
+                    </div>
+                    <div class="input-group">
+                        <label>Weight (kg)</label>
+                        <input type="number" id="pet-weight" step="0.1" required>
+                    </div>
+                    <button type="submit" class="cta-button" style="grid-column: span 2;">Add Pet</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script>
+    <script src="js/pages/patients.js"></script>
+</body>
+
+</html>

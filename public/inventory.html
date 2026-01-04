@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory | Paw Whisker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+        <header class="header">
+            <div>
+                <h2>Inventory</h2>
+                <p class="date-display" id="current-date">Fetching date...</p>
+            </div>
+        </header>
+
+        <div id="inventory-view" class="section-content section-active">
+            <div class="card">
+                <div class="card-header" style="justify-content:space-between;">
+                    <h3>Stock Management</h3>
+                    <button onclick="openModal('addItemModal')" class="cta-button">
+                        <i class="fa-solid fa-plus"></i> Add Item
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Item Name</th>
+                                <th>Category</th>
+                                <th>Stock</th>
+                                <th>Price</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add Item Modal -->
+    <div id="addItemModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-box"></i> Add New Item</h3>
+                <span class="close" onclick="closeModal('addItemModal')">&times;</span>
+            </div>
+            <form id="addItemForm">
+                <div class="input-group">
+                    <label>Item Name</label>
+                    <input type="text" id="item-name" required>
+                </div>
+                <div class="input-group">
+                    <label>Category</label>
+                    <select id="item-category" class="status-select" required>
+                        <option value="Obat">Medicine</option>
+                        <option value="Makanan">Food</option>
+                        <option value="Aksesoris">Accessories</option>
+                        <option value="Lainnya">Others</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Stock</label>
+                    <input type="number" id="item-stock" required>
+                </div>
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1rem;">
+                    <div class="input-group">
+                        <label>Price (Rp)</label>
+                        <input type="number" id="item-price" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Unit</label>
+                        <input type="text" id="item-unit" placeholder="Pcs/Kg/Btl" required>
+                    </div>
+                </div>
+                <button type="submit" class="cta-button" style="width:100%">Add Item</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Item Modal -->
+    <div id="editItemModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-pen-to-square"></i> Edit Item</h3>
+                <span class="close" onclick="closeModal('editItemModal')">&times;</span>
+            </div>
+            <form id="editItemForm">
+                <input type="hidden" id="edit-item-id">
+                <div class="input-group">
+                    <label>Item Name</label>
+                    <input type="text" id="edit-item-name" disabled
+                        style="background:rgba(255,255,255,0.05); color:var(--text-muted);">
+                </div>
+                <!-- Only allow editing Stock and Price for now -->
+                <div class="input-group">
+                    <label>Stock</label>
+                    <input type="number" id="edit-item-stock" required>
+                </div>
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1rem;">
+                    <div class="input-group">
+                        <label>Price (Rp)</label>
+                        <input type="number" id="edit-item-price" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Unit</label>
+                        <input type="text" id="edit-item-unit" required>
+                    </div>
+                </div>
+                <button type="submit" class="cta-button" style="width:100%">Update Item</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script>
+    <script src="js/pages/inventory.js"></script>
+</body>
+
+</html>

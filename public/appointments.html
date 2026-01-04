@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointments | Paw Whisker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+        <header class="header">
+            <div>
+                <h2>Appointments</h2>
+                <p class="date-display" id="current-date">Fetching date...</p>
+            </div>
+        </header>
+
+        <div id="appointments-view" class="section-content section-active">
+            <div class="dashboard-grid">
+                <div class="card" style="grid-column: span 2;">
+                    <div class="card-header">
+                        <h3>Book New Appointment</h3>
+                    </div>
+                    <form id="appointmentForm" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <div class="input-group">
+                            <label style="color:var(--text-muted); display:block; margin-bottom:0.5rem">Owner</label>
+                            <div style="position:relative;">
+                                <input type="text" id="apt-owner-search" placeholder="Type owner name..."
+                                    autocomplete="off"
+                                    style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:var(--text-color); border-radius:5px;">
+                                <input type="hidden" id="apt-owner-id" required>
+                                <div id="apt-owner-results"
+                                    style="position:absolute; top:100%; left:0; right:0; background:var(--card-bg); border:1px solid var(--glass-border); border-radius:5px; max-height:200px; overflow-y:auto; z-index:1000; display:none; box-shadow:0 4px 6px rgba(0,0,0,0.3);">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label style="color:var(--text-muted); display:block; margin-bottom:0.5rem">Pet</label>
+                            <select id="apt-pet" required class="status-select" style="width:100%; padding:0.8rem;"
+                                disabled>
+                                <option value="">Select Owner First</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label style="color:var(--text-muted); display:block; margin-bottom:0.5rem">Service</label>
+                            <select id="apt-service" required class="status-select" style="width:100%; padding:0.8rem;">
+                                <option value="">Select Service</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label style="color:var(--text-muted); display:block; margin-bottom:0.5rem">Doctor /
+                                Groomer</label>
+                            <select id="apt-doctor" required class="status-select" style="width:100%; padding:0.8rem;">
+                                <option value="">Select Doctor/Groomer</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label style="color:var(--text-muted); display:block; margin-bottom:0.5rem">Date &
+                                Time</label>
+                            <input type="datetime-local" id="apt-date" required
+                                style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:var(--text-color); border-radius:5px; color-scheme:dark;">
+                        </div>
+
+                        <div class="input-group" style="grid-column: span 2;">
+                            <label style="color:var(--text-muted); display:block; margin-bottom:0.5rem">Initial
+                                Complaint / Notes</label>
+                            <textarea id="apt-complaint" rows="3"
+                                style="width:100%; padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:var(--text-color); border-radius:5px;"></textarea>
+                        </div>
+
+                        <div style="grid-column: span 2; display:flex; justify-content:flex-end;">
+                            <button type="submit" class="cta-button" style="padding:1rem 2rem;">
+                                <i class="fa-solid fa-calendar-plus"></i> Book Appointment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script>
+    <script src="js/pages/appointments.js"></script>
+</body>
+
+</html>

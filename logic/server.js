@@ -47,6 +47,38 @@ const authMiddleware = (req, res, next) => {
 
 // Routes
 
+// Serve Modular Pages
+app.get('/appointments', authMiddleware, (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/appointments.html'));
+});
+
+app.get('/patients', authMiddleware, (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/patients.html'));
+});
+
+app.get('/medical-records', authMiddleware, (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/medical-records.html'));
+});
+
+app.get('/staff', authMiddleware, (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/staff.html'));
+});
+
+app.get('/inventory', authMiddleware, (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/inventory.html'));
+});
+
+app.get('/transactions', authMiddleware, (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/transactions.html'));
+});
+
+app.get('/settings', authMiddleware, (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/settings.html')); // User needs settings.html? or reusing dashboard for now?
+    // Plan said: split dashboard.html. We haven't made settings.html yet.
+    // Let's stick to dashboard for settings or make a quick settings.html
+    // res.sendFile(path.join(__dirname, '../public/dashboard.html')); // Placeholder if settings.html is not verified
+});
+
 // Serve Login Page
 app.get('/login', (req, res) => {
     if (req.session.userId) {
@@ -508,19 +540,64 @@ app.get('/api/dashboard/analytics', authMiddleware, async (req, res) => {
 
 // --- NEW CRUD API ENDPOINTS ---
 
-// 4. Patients & Owners
+// Get Single Owner
+app.get('/api/owners/:id', authMiddleware, async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM pemilik WHERE id_pemilik = ?', [req.params.id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Owner not found' });
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch owner' });
+    }
+});
+
 // Get All Owners (with Pet count)
 app.get('/api/owners', authMiddleware, async (req, res) => {
     try {
-        const query = `
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const search = req.query.search || '';
+        const offset = (page - 1) * limit;
+
+        let countQuery = 'SELECT COUNT(*) as total FROM pemilik p';
+        let dataQuery = `
             SELECT p.*, COUNT(h.id_hewan) as pet_count 
             FROM pemilik p 
-            LEFT JOIN hewan h ON p.id_pemilik = h.id_pemilik 
-            GROUP BY p.id_pemilik 
-            ORDER BY p.id_pemilik DESC
+            LEFT JOIN hewan h ON p.id_pemilik = h.id_pemilik
         `;
-        const [rows] = await db.query(query);
-        res.json(rows);
+
+        let queryParams = [];
+        let countParams = [];
+
+        if (search) {
+            const searchClause = ' WHERE p.nama_pemilik LIKE ?';
+            countQuery += searchClause;
+            dataQuery += searchClause;
+            countParams.push(`%${search}%`);
+            queryParams.push(`%${search}%`);
+        }
+
+        dataQuery += ' GROUP BY p.id_pemilik ORDER BY p.id_pemilik DESC LIMIT ? OFFSET ?';
+        queryParams.push(limit, offset);
+
+        // Get Total Count
+        const [countResult] = await db.query(countQuery, countParams);
+        const totalRecords = countResult[0].total;
+        const totalPages = Math.ceil(totalRecords / limit);
+
+        // Get Paginated Data
+        const [rows] = await db.query(dataQuery, queryParams);
+
+        res.json({
+            data: rows,
+            pagination: {
+                totalRecords,
+                totalPages,
+                currentPage: page,
+                limit
+            }
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to fetch owners' });
@@ -620,14 +697,33 @@ app.delete('/api/owners/:id', authMiddleware, async (req, res) => {
 // Get All Pets
 app.get('/api/pets', authMiddleware, async (req, res) => {
     try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        // Get Total Count
+        const [countResult] = await db.query('SELECT COUNT(*) as total FROM hewan');
+        const totalRecords = countResult[0].total;
+        const totalPages = Math.ceil(totalRecords / limit);
+
         const query = `
             SELECT h.*, p.nama_pemilik 
             FROM hewan h 
             JOIN pemilik p ON h.id_pemilik = p.id_pemilik 
             ORDER BY h.id_hewan DESC
+            LIMIT ? OFFSET ?
         `;
-        const [rows] = await db.query(query);
-        res.json(rows);
+        const [rows] = await db.query(query, [limit, offset]);
+
+        res.json({
+            data: rows,
+            pagination: {
+                totalRecords,
+                totalPages,
+                currentPage: page,
+                limit
+            }
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to fetch pets' });

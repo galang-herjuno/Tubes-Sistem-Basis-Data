@@ -587,16 +587,38 @@ async function fetchAnalytics() {
 
 // --- NEW SECTION LOADERS ---
 
-async function loadPatients() {
-    const res = await fetch('/api/owners');
+// Pagination State
+let currentPatientPage = 1;
+let totalPatientPages = 1;
+let searchTimeout = null; // For debounce
+
+async function loadPatients(page = 1) {
+    currentPatientPage = page;
+    const searchInput = document.getElementById('owner-search-input');
+    const searchTerm = searchInput ? searchInput.value : '';
+
+    const res = await fetch(`/api/owners?page=${page}&limit=10&search=${encodeURIComponent(searchTerm)}`);
+
     if (res.ok) {
-        const owners = await res.json();
+        const result = await res.json();
+        const owners = result.data;
+        totalPatientPages = result.pagination.totalPages;
+
+        // Update Pagination Info
+        const info = document.getElementById('page-info-patients');
+        const prevBtn = document.getElementById('btn-prev-patients');
+        const nextBtn = document.getElementById('btn-next-patients');
+
+        if (info) info.textContent = `Page ${result.pagination.currentPage} of ${Math.max(1, result.pagination.totalPages)}`;
+        if (prevBtn) prevBtn.disabled = result.pagination.currentPage <= 1;
+        if (nextBtn) nextBtn.disabled = result.pagination.currentPage >= result.pagination.totalPages;
+
         const tbody = document.querySelector('#patients-view table tbody');
         if (!tbody) return;
         tbody.innerHTML = '';
 
         if (owners.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:2rem;">No owners registered yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:2rem;">No owners found matching your search</td></tr>';
             return;
         }
 
@@ -619,6 +641,20 @@ async function loadPatients() {
     }
 }
 
+window.changePatientPage = (delta) => {
+    const newPage = currentPatientPage + delta;
+    if (newPage > 0 && newPage <= totalPatientPages) {
+        loadPatients(newPage);
+    }
+};
+
+window.searchOwners = () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        loadPatients(1); // Reset to page 1 on search
+    }, 500); // 500ms debounce
+};
+
 // View Owner Details
 window.viewOwnerDetails = async (ownerId) => {
     try {
@@ -627,16 +663,14 @@ window.viewOwnerDetails = async (ownerId) => {
         content.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</p>';
 
         // Fetch owner details
-        const ownerRes = await fetch('/api/owners');
-        if (!ownerRes.ok) return;
-
-        const owners = await ownerRes.json();
-        const owner = owners.find(o => o.id_pemilik === ownerId);
-
-        if (!owner) {
+        // Fetch owner details directly
+        const ownerRes = await fetch(`/api/owners/${ownerId}`);
+        if (!ownerRes.ok) {
             content.innerHTML = '<p style="text-align:center; color:#ef4444;">Owner not found</p>';
             return;
         }
+
+        const owner = await ownerRes.json();
 
         // Fetch owner's pets
         const petsRes = await fetch(`/api/owners/${ownerId}/pets`);
@@ -1101,84 +1135,152 @@ window.submitEditStaff = async (e) => {
     }
 };
 
-async function loadAppointmentFormData() {
-    const ownerRes = await fetch('/api/owners');
-    if (ownerRes.ok) {
-        const owners = await ownerRes.json();
-        const ownerSelect = document.getElementById('apt-owner');
-        ownerSelect.innerHTML = '<option value="">Select Owner</option>';
-        owners.forEach(o => {
-            const opt = document.createElement('option');
-            opt.value = o.id_pemilik;
-            opt.textContent = `${o.nama_pemilik} (${o.no_hp})`;
-            ownerSelect.appendChild(opt);
-        });
-    }
+// Initialize Owner Search for Appointment Form
+window.initOwnerSearch = () => {
+    const searchInput = document.getElementById('apt-owner-search');
+    const resultsDiv = document.getElementById('apt-owner-results');
+    let debounceTimer;
 
-    const docRes = await fetch('/api/doctors');
-    if (docRes.ok) {
-        const docs = await docRes.json();
-        const docSelect = document.getElementById('apt-doctor');
-        docSelect.innerHTML = '<option value="">Select Doctor/Groomer</option>';
-        docs.forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d.id_pegawai;
-            opt.textContent = d.nama_lengkap;
-            docSelect.appendChild(opt);
-        });
-    }
+    if (!searchInput) return;
 
-    const ownerSelect = document.getElementById('apt-owner');
-    ownerSelect.onchange = async () => {
-        const ownerId = ownerSelect.value;
-        const petSelect = document.getElementById('apt-pet');
-        if (!ownerId) {
-            petSelect.disabled = true;
-            petSelect.innerHTML = '<option value="">Select Owner First</option>';
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(debounceTimer);
+        const query = e.target.value.trim();
+
+        if (query.length < 2) {
+            resultsDiv.style.display = 'none';
             return;
         }
 
-        const petRes = await fetch(`/api/owners/${ownerId}/pets`);
-        if (petRes.ok) {
-            const pets = await petRes.json();
-            petSelect.innerHTML = '<option value="">Select Pet</option>';
-            pets.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.id_hewan;
-                opt.textContent = `${p.nama_hewan} (${p.jenis_hewan})`;
-                petSelect.appendChild(opt);
-            });
-            petSelect.disabled = false;
+        debounceTimer = setTimeout(() => searchAppointmentOwners(query), 300);
+    });
+
+    // Hide results when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+            resultsDiv.style.display = 'none';
         }
-    };
+    });
+};
 
-    const form = document.getElementById('appointmentForm');
-    form.onsubmit = async (e) => {
-        e.preventDefault();
-        const data = {
-            id_hewan: document.getElementById('apt-pet').value,
-            id_pegawai: document.getElementById('apt-doctor').value,
-            tgl_kunjungan: document.getElementById('apt-date').value,
-            keluhan: document.getElementById('apt-complaint').value
-        };
+async function searchAppointmentOwners(query) {
+    const resultsDiv = document.getElementById('apt-owner-results');
 
-        try {
-            const res = await fetch('/api/appointments', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
+    try {
+        const res = await fetch(`/api/owners?search=${encodeURIComponent(query)}&limit=10`);
+        if (res.ok) {
             const result = await res.json();
-            alert(result.message);
-            if (res.ok) {
-                form.reset();
-                window.location.href = '/dashboard';
+            const owners = result.data;
+
+            resultsDiv.innerHTML = '';
+            if (owners.length === 0) {
+                resultsDiv.innerHTML = '<div style="padding:0.8rem; color:var(--text-muted); text-align:center;">No owner found</div>';
+            } else {
+                owners.forEach(o => {
+                    const div = document.createElement('div');
+                    div.style.padding = '0.8rem';
+                    div.style.cursor = 'pointer';
+                    div.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                    div.innerHTML = `<strong>${o.nama_pemilik}</strong> <br> <span style="font-size:0.8rem; color:var(--text-muted);">${o.no_hp}</span>`;
+
+                    div.addEventListener('mouseenter', () => div.style.background = 'rgba(255,255,255,0.1)');
+                    div.addEventListener('mouseleave', () => div.style.background = 'transparent');
+
+                    div.onclick = () => selectAppointmentOwner(o);
+                    resultsDiv.appendChild(div);
+                });
             }
-        } catch (err) {
-            console.error(err);
-            alert('Failed to create appointment');
+            resultsDiv.style.display = 'block';
         }
+    } catch (err) {
+        console.error('Search error:', err);
+    }
+}
+
+async function selectAppointmentOwner(owner) {
+    const searchInput = document.getElementById('apt-owner-search');
+    const hiddenId = document.getElementById('apt-owner-id');
+    const resultsDiv = document.getElementById('apt-owner-results');
+    const petSelect = document.getElementById('apt-pet');
+
+    searchInput.value = owner.nama_pemilik;
+    hiddenId.value = owner.id_pemilik;
+    resultsDiv.style.display = 'none';
+
+    // Load Pets for selected owner
+    petSelect.disabled = true;
+    petSelect.innerHTML = '<option>Loading pets...</option>';
+
+    try {
+        const res = await fetch(`/api/owners/${owner.id_pemilik}/pets`);
+        if (res.ok) {
+            const pets = await res.json();
+            petSelect.innerHTML = '<option value="">Select Pet</option>';
+
+            if (pets.length === 0) {
+                petSelect.innerHTML = '<option value="">No pets found</option>';
+            } else {
+                pets.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id_hewan;
+                    opt.textContent = `${p.nama_hewan} (${p.jenis_hewan})`;
+                    petSelect.appendChild(opt);
+                });
+                petSelect.disabled = false;
+            }
+        }
+    } catch (err) {
+        console.error('Load pets error:', err);
+        petSelect.innerHTML = '<option>Error loading pets</option>';
+    }
+}
+
+// Replaces the old loadAppointmentFormData since we don't preload all owners anymore
+async function loadAppointmentFormData() {
+    initOwnerSearch(); // Initialize search listener
+}
+
+const docRes = await fetch('/api/doctors');
+if (docRes.ok) {
+    const docs = await docRes.json();
+    const docSelect = document.getElementById('apt-doctor');
+    docSelect.innerHTML = '<option value="">Select Doctor/Groomer</option>';
+    docs.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id_pegawai;
+        opt.textContent = d.nama_lengkap;
+        docSelect.appendChild(opt);
+    });
+}
+}
+
+const form = document.getElementById('appointmentForm');
+form.onsubmit = async (e) => {
+    e.preventDefault();
+    const data = {
+        id_hewan: document.getElementById('apt-pet').value,
+        id_pegawai: document.getElementById('apt-doctor').value,
+        tgl_kunjungan: document.getElementById('apt-date').value,
+        keluhan: document.getElementById('apt-complaint').value
     };
+
+    try {
+        const res = await fetch('/api/appointments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        alert(result.message);
+        if (res.ok) {
+            form.reset();
+            window.location.href = '/dashboard';
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Failed to create appointment');
+    }
+};
 }
 
 async function loadInventory() {
@@ -1396,19 +1498,22 @@ window.addPrescription = () => {
 
 // Load owners into pet modal dropdown when modal opens
 async function loadOwnerDropdowns() {
-    const res = await fetch('/api/owners');
+    // For dropdowns, we might need a search endpoint in future.
+    // For now, load first 100 or stick to recently added
+    const res = await fetch('/api/owners?limit=100');
     if (res.ok) {
-        const owners = await res.json();
-        const petOwnerSelect = document.getElementById('pet-owner-select');
-        if (petOwnerSelect) {
-            petOwnerSelect.innerHTML = '<option value="">Select Owner</option>';
-            owners.forEach(o => {
-                const opt = document.createElement('option');
-                opt.value = o.id_pemilik;
-                opt.textContent = `${o.nama_pemilik} (${o.no_hp || 'No phone'})`;
-                petOwnerSelect.appendChild(opt);
-            });
-        }
+        const result = await res.json();
+        const owners = result.data; // Handle paginated response
+        const select = document.getElementById('pet-owner-select'); // Changed from 'owner-select' to 'pet-owner-select' to match original
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Select Owner</option>';
+        owners.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o.id_pemilik;
+            opt.textContent = `${o.nama_pemilik} (${o.no_hp})`;
+            select.appendChild(opt);
+        });
     }
 }
 

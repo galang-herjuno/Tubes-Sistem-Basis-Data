@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Management | Paw Whisker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+        <header class="header">
+            <div>
+                <h2>Staff Management</h2>
+                <p class="date-display" id="current-date">Fetching date...</p>
+            </div>
+        </header>
+
+        <div id="staff-view" class="section-content section-active">
+            <div class="card">
+                <div class="card-header" style="justify-content:space-between;">
+                    <h3>Clinic Staff</h3>
+                    <button id="addStaffBtn" onclick="openModal('addStaffModal')" class="cta-button">
+                        <i class="fa-solid fa-user-plus"></i> Add Staff
+                    </button>
+                </div>
+
+                <div id="staff-empty-state"
+                    style="display:none; text-align:center; padding:3rem; color:var(--text-muted);">
+                    <i class="fa-solid fa-users" style="font-size:3rem; margin-bottom:1rem; opacity:0.5;"></i>
+                    <p>No staff members found.</p>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Position</th>
+                                <th>Account</th>
+                                <th>Specialization</th>
+                                <th>Phone</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add Staff Modal -->
+    <div id="addStaffModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-doctor"></i> Add New Staff</h3>
+                <span class="close" onclick="closeModal('addStaffModal')">&times;</span>
+            </div>
+            <form id="addStaffForm">
+                <div class="input-group">
+                    <label>Full Name</label>
+                    <input type="text" id="staff-name" required>
+                </div>
+                <div class="input-group">
+                    <label>Position</label>
+                    <select id="staff-position" required class="status-select"
+                        onchange="toggleSpesialisasi(this.value)">
+                        <option value="Dokter Hewan">Dokter Hewan</option>
+                        <option value="Groomer">Groomer</option>
+                        <option value="Resepsionis">Resepsionis</option>
+                        <option value="Staff">Staff Umum</option>
+                    </select>
+                </div>
+
+                <!-- Specialization Field (Hidden by default) -->
+                <div class="input-group" id="spesialisasi-group">
+                    <label>Specialization</label>
+                    <input type="text" id="staff-spec" placeholder="e.g., Bedah, Kulit, Kucing">
+                </div>
+
+                <div class="input-group">
+                    <label>Role (Access Level)</label>
+                    <select id="staff-role" required class="status-select">
+                        <option value="Dokter">Dokter Access</option>
+                        <option value="Groomer">Groomer Access</option>
+                        <option value="Resepsionis">Resepsionis Access</option>
+                        <option value="Admin">Admin Access</option>
+                    </select>
+                </div>
+
+                <h4 style="margin-top:1.5rem; margin-bottom:0.5rem; color:var(--accent-color);">Account Setup</h4>
+                <div class="input-group">
+                    <label>Username</label>
+                    <input type="text" id="staff-username" required autocomplete="off">
+                </div>
+                <div class="input-group" style="position:relative;">
+                    <label>Password</label>
+                    <div style="position:relative;">
+                        <input type="password" id="staff-password" required autocomplete="new-password">
+                        <i class="fa-solid fa-eye" id="toggleStaffPass"
+                            onclick="togglePasswordVisibility('staff-password', 'toggleStaffPass')"
+                            style="position:absolute; right:15px; top:50%; transform:translateY(-50%); color:var(--text-muted); cursor:pointer;"></i>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Phone Number</label>
+                    <input type="text" id="staff-phone" required>
+                </div>
+
+                <button type="submit" class="cta-button" style="width:100%; margin-top:1rem;">Create Account &
+                    Staff</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Staff Modal -->
+    <div id="editStaffModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-pen"></i> Edit Staff</h3>
+                <span class="close" onclick="closeModal('editStaffModal')">&times;</span>
+            </div>
+            <form id="editStaffForm" onsubmit="submitEditStaff(event)">
+                <input type="hidden" id="edit-staff-id">
+                <div class="input-group">
+                    <label>Full Name</label>
+                    <input type="text" id="edit-staff-name" required>
+                </div>
+                <div class="input-group">
+                    <label>Position</label>
+                    <select id="edit-staff-position" required class="status-select"
+                        onchange="toggleEditSpesialisasi(this.value)">
+                        <option value="Dokter Hewan">Dokter Hewan</option>
+                        <option value="Groomer">Groomer</option>
+                        <option value="Resepsionis">Resepsionis</option>
+                        <option value="Staff">Staff Umum</option>
+                    </select>
+                </div>
+                <div class="input-group" id="edit-spesialisasi-group">
+                    <label>Specialization</label>
+                    <input type="text" id="edit-staff-spec">
+                </div>
+                <div class="input-group">
+                    <label>Role (Access Level)</label>
+                    <select id="edit-staff-role" required class="status-select">
+                        <option value="Dokter">Dokter</option>
+                        <option value="Groomer">Groomer</option>
+                        <option value="Resepsionis">Resepsionis</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Username (Read Only)</label>
+                    <input type="text" id="edit-staff-username" disabled
+                        style="background:rgba(255,255,255,0.05); color:var(--text-muted);">
+                </div>
+                <div class="input-group">
+                    <label>Phone Number</label>
+                    <input type="text" id="edit-staff-phone">
+                </div>
+                <button type="submit" class="cta-button" style="width:100%; margin-top:1rem;">Update Staff</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script>
+    <script src="js/pages/staff.js"></script>
+</body>
+
+</html>

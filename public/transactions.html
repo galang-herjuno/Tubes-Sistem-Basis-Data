@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transactions | Paw Whisker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+        <header class="header">
+            <div>
+                <h2>Transactions</h2>
+                <p class="date-display" id="current-date">Fetching date...</p>
+            </div>
+        </header>
+
+        <div id="transactions-view" class="section-content section-active">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Recent Transactions</h3>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Owner</th>
+                                <th>Total</th>
+                                <th>Payment</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bill Detail Modal -->
+    <div id="billDetailModal" class="modal hidden">
+        <div class="modal-content" style="max-width:500px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-receipt"></i> Transaction Details</h3>
+                <span class="close" onclick="closeModal('billDetailModal')">&times;</span>
+            </div>
+            <div id="bill-detail-content" style="padding:1rem 0;">
+                <!-- Filled via JS -->
+            </div>
+            <div style="margin-top:1rem; display:flex; gap:1rem;">
+                <button onclick="printBill()" class="cta-button" style="flex:1; background:var(--accent-color);">
+                    <i class="fa-solid fa-print"></i> Print Invoice
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script>
+    <script src="js/pages/transactions.js"></script>
+</body>
+
+</html>

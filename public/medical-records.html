@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Records | Paw Whisker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+        <header class="header">
+            <div>
+                <h2>Medical Records</h2>
+                <p class="date-display" id="current-date">Fetching date...</p>
+            </div>
+        </header>
+
+        <div id="medical-workspace-view" class="section-content section-active">
+            <div class="dashboard-grid">
+                <!-- Patient Search & Queue -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-list-ul"></i> Patients Queue</h3>
+                    </div>
+                    <div class="search-box" style="margin-bottom:1rem;">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="medical-patient-search" placeholder="Search patient name..."
+                            class="search-input">
+                    </div>
+                    <div id="medical-queue-list" style="max-height:400px; overflow-y:auto;">
+                        <div style="text-align:center; padding:2rem; color:var(--text-muted);">
+                            Loading queue...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Record Editor -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-file-medical"></i> Medical Record</h3>
+                        <span id="active-patient-badge"
+                            style="display:none; background:var(--primary-color); color:var(--bg-color); padding:0.2rem 0.8rem; border-radius:20px; font-size:0.8rem; font-weight:600;">No
+                            Patient Selected</span>
+                    </div>
+
+                    <div id="medical-form-container" style="opacity:0.5; pointer-events:none;">
+                        <input type="hidden" id="mr-id-daftar">
+                        <input type="hidden" id="mr-id-hewan">
+
+                        <div class="input-group">
+                            <label>Diagnosis</label>
+                            <textarea id="mr-diagnosa" rows="3" placeholder="Enter findings..."></textarea>
+                        </div>
+                        <div class="input-group" style="margin-top:1rem;">
+                            <label>Treatment / Action</label>
+                            <textarea id="mr-tindakan" rows="3" placeholder="Treatment given..."></textarea>
+                        </div>
+                        <div class="input-group" style="margin-top:1rem;">
+                            <label>Internal Notes (Doctor Only)</label>
+                            <textarea id="mr-catatan" rows="2" placeholder="Private notes..."></textarea>
+                        </div>
+
+                        <!-- Prescription Section -->
+                        <div style="margin-top:1.5rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem;">
+                            <div
+                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                                <h4>Prescription</h4>
+                                <button type="button" onclick="addPrescriptionRow()"
+                                    style="background:rgba(255,255,255,0.1); border:none; color:white; padding:0.4rem 0.8rem; border-radius:5px; cursor:pointer;">
+                                    <i class="fa-solid fa-plus"></i> Add Drug
+                                </button>
+                            </div>
+                            <div id="prescription-list">
+                                <!-- Dynamic rows -->
+                            </div>
+                        </div>
+
+                        <div style="margin-top:1.5rem; display:flex; justify-content:flex-end; gap:1rem;">
+                            <button onclick="saveMedicalRecord('Draft')"
+                                style="background:transparent; border:1px solid var(--glass-border); color:var(--text-muted); padding:0.8rem 1.5rem; border-radius:8px; cursor:pointer;">
+                                Save Draft
+                            </button>
+                            <button onclick="saveMedicalRecord('Selesai')" class="cta-button">
+                                <i class="fa-solid fa-check"></i> Finalize & Finish
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Patient History Section -->
+            <div class="card" style="margin-top:1.5rem;">
+                <div class="card-header">
+                    <h3>Patient History</h3>
+                    <div class="search-box" style="width:250px;">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="patient-search" placeholder="Search history..."
+                            onkeyup="searchPatientHistory()" class="search-input">
+                    </div>
+                </div>
+                <div id="patient-history-list">
+                    <p style="text-align:center; color:#94a3b8; padding:2rem;">Select a patient to view history</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script>
+    <script src="js/pages/medical-records.js"></script>
+</body>
+
+</html>

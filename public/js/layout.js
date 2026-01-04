@@ -1,0 +1,124 @@
+/**
+ * Shared Layout Logic (Sidebar, Header, Role Management)
+ */
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Inject Sidebar and Header if container exists
+    injectLayout();
+
+    // 2. Fetch User Info
+    try {
+        const res = await fetch('/api/me');
+        if (res.ok) {
+            const user = await res.json();
+
+            // Update Sidebar User Info
+            const nameEl = document.getElementById('user-name');
+            const roleEl = document.getElementById('user-role');
+            if (nameEl) nameEl.textContent = user.username;
+            if (roleEl) roleEl.textContent = user.role;
+
+            // Global role access
+            window.currentUserRole = user.role;
+
+            // Update UI Access
+            updateUIBasedOnRole(user.role);
+
+            // Set active menu item based on current URL
+            setActiveMenuItem();
+        }
+    } catch (err) {
+        console.error('Layout init error:', err);
+    }
+
+    // 3. Set Date
+    const dateEl = document.getElementById('current-date');
+    if (dateEl) {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        dateEl.textContent = new Date().toLocaleDateString('en-US', options);
+    }
+});
+
+function injectLayout() {
+    const sidebarHTML = `
+    <div class="brand">
+        <i class="fa-solid fa-paw" style="color:var(--primary-color)"></i> Paw <span>Whisker</span>
+    </div>
+
+    <ul class="menu">
+        <li><a href="/dashboard"><i class="fa-solid fa-grid-2"></i> Dashboard</a></li>
+
+        <!-- Appointments: All Roles -->
+        <li class="role-admin role-resepsionis role-dokter"><a href="/appointments"><i class="fa-solid fa-calendar-check"></i> Appointments</a></li>
+
+        <!-- Patients: Admin & Recep -->
+        <li class="role-admin role-resepsionis"><a href="/patients"><i class="fa-solid fa-users"></i> Patients & Owners</a></li>
+
+        <!-- Records: Admin & Doctor & Groomer -->
+        <li class="role-admin role-dokter role-groomer"><a href="/medical-records"><i class="fa-solid fa-stethoscope"></i> Medical Records</a></li>
+
+        <!-- Staff: Admin Only -->
+        <li class="role-admin"><a href="/staff"><i class="fa-solid fa-user-doctor"></i> Staff Management</a></li>
+
+        <!-- Inventory: Admin & Resepsionis -->
+        <li class="role-admin role-resepsionis"><a href="/inventory"><i class="fa-solid fa-boxes-stacked"></i> Inventory</a></li>
+
+        <!-- Transactions: Admin & Recep -->
+        <li class="role-admin role-resepsionis"><a href="/transactions"><i class="fa-solid fa-cash-register"></i> Transactions</a></li>
+
+        <li><a href="/settings"><i class="fa-solid fa-gear"></i> Settings</a></li>
+    </ul>
+
+    <div class="user-profile">
+        <div class="avatar">
+            <i class="fa-solid fa-user"></i>
+        </div>
+        <div class="user-info">
+            <h4 id="user-name">Loading...</h4>
+            <p id="user-role">...</p>
+            <a href="/auth/logout" class="logout-btn">Logout</a>
+        </div>
+    </div>
+    `;
+
+    const sidebarContainer = document.querySelector('aside.sidebar');
+    if (sidebarContainer) {
+        sidebarContainer.innerHTML = sidebarHTML;
+    }
+}
+
+function updateUIBasedOnRole(role) {
+    const adminElements = document.querySelectorAll('.role-admin');
+    const doctorElements = document.querySelectorAll('.role-dokter');
+    const receptionElements = document.querySelectorAll('.role-resepsionis');
+    const groomerElements = document.querySelectorAll('.role-groomer');
+
+    // Default Hide
+    [adminElements, doctorElements, receptionElements, groomerElements].forEach(group => {
+        group.forEach(el => el.style.display = 'none');
+    });
+
+    // Show based on role
+    if (role === 'Admin') {
+        adminElements.forEach(el => el.style.display = '');
+    } else if (role === 'Dokter') {
+        doctorElements.forEach(el => el.style.display = '');
+    } else if (role === 'Resepsionis') {
+        receptionElements.forEach(el => el.style.display = '');
+    } else if (role === 'Groomer') {
+        groomerElements.forEach(el => el.style.display = '');
+    }
+}
+
+function setActiveMenuItem() {
+    const path = window.location.pathname;
+    const links = document.querySelectorAll('.menu a');
+
+    links.forEach(link => {
+        if (link.getAttribute('href') === path) {
+            link.classList.add('active');
+        } else {
+            link.classList.remove('active');
+        }
+    });
+}
