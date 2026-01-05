@@ -292,23 +292,56 @@ app.post('/api/users/change-password', authMiddleware, async (req, res) => {
     }
 });
 
-// Delete Account
-app.delete('/api/users/delete', authMiddleware, async (req, res) => {
-    const userId = req.session.userId;
+// Delete User (Admin Only)
+// Delete User (Admin Only - Target ID)
+app.delete('/api/users/:id', authMiddleware, authorizeRole('Admin'), async (req, res) => {
+    const targetUserId = req.params.id;
+    const requesterId = req.session.userId;
+
+    // Prevent Admin from deleting themselves via this endpoint (use self-delete instead)
+    if (parseInt(targetUserId) === requesterId) {
+        return res.status(400).json({ message: 'To delete your own account, use the self-delete feature in Settings.' });
+    }
 
     try {
+        await db.query('DELETE FROM users WHERE id_user = ?', [targetUserId]);
+        res.json({ message: 'User account deleted successfully' });
+    } catch (error) {
+        console.error('Delete account error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Delete Account (Self - Requires Password)
+app.post('/api/users/delete', authMiddleware, async (req, res) => {
+    const userId = req.session.userId;
+    const { password } = req.body;
+
+    if (!password) {
+        return res.status(400).json({ message: 'Password is required to delete account' });
+    }
+
+    try {
+        // Verify password first
+        const [rows] = await db.query('SELECT password FROM users WHERE id_user = ?', [userId]);
+        if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
+
+        const isMatch = await bcrypt.compare(password, rows[0].password);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Incorrect password. Account deletion failed.' });
+        }
+
+        // Proceed to delete
         await db.query('DELETE FROM users WHERE id_user = ?', [userId]);
 
         // Destroy session
         req.session.destroy(err => {
-            if (err) {
-                console.error('Session destroy error:', err);
-            }
+            if (err) console.error('Session destroy error:', err);
             res.clearCookie('connect.sid');
-            res.json({ message: 'Account deleted successfully' });
+            res.json({ message: 'Account deleted successfully. Goodbye.' });
         });
     } catch (error) {
-        console.error('Delete account error:', error);
+        console.error('Self-delete error:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 });
@@ -600,14 +633,14 @@ app.get('/api/owners', authMiddleware, async (req, res) => {
         const offset = (page - 1) * limit;
 
         // 1. Fetch Owners First (Avoiding massive LEFT JOIN & SELECT *)
-        let ownerQuery = 'SELECT id_pemilik, id_user, nama_pemilik, alamat, no_hp, email FROM pemilik';
-        let countQuery = 'SELECT COUNT(*) as total FROM pemilik';
+        let ownerQuery = 'SELECT p.id_pemilik, p.id_user, p.nama_pemilik, p.alamat, p.no_hp, p.email, u.created_at FROM pemilik p LEFT JOIN users u ON p.id_user = u.id_user';
+        let countQuery = 'SELECT COUNT(*) as total FROM pemilik p';
         let queryParams = [];
         let countParams = [];
 
         if (search) {
             // Optimized Search: Prefix match only for Index usage
-            const searchClause = ' WHERE nama_pemilik LIKE ?';
+            const searchClause = ' WHERE p.nama_pemilik LIKE ?';
             ownerQuery += searchClause;
             countQuery += searchClause;
             // Use prefix wildcard (search%) instead of %search%
@@ -615,7 +648,7 @@ app.get('/api/owners', authMiddleware, async (req, res) => {
             countParams.push(`${search}%`);
         }
 
-        ownerQuery += ' ORDER BY id_pemilik DESC LIMIT ? OFFSET ?';
+        ownerQuery += ' ORDER BY p.id_pemilik DESC LIMIT ? OFFSET ?';
         queryParams.push(limit, offset);
 
         // Get Total Count (Cheap count on single table)

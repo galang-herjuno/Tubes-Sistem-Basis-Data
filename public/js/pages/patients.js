@@ -150,8 +150,8 @@ if (addOwnerForm) {
 
         try {
             const data = {
-                username: document.getElementById('owner-name').value.toLowerCase().replace(/\s+/g, '') + Math.floor(Math.random() * 100),
-                password: 'password123', // Default
+                username: document.getElementById('owner-username').value,
+                password: document.getElementById('owner-password').value,
                 fullname: document.getElementById('owner-name').value,
                 email: document.getElementById('owner-email').value,
                 phone: document.getElementById('owner-phone').value,
@@ -166,7 +166,7 @@ if (addOwnerForm) {
 
             const result = await res.json();
             if (res.ok) {
-                alert('Success: Owner added! Default password is "password123".');
+                alert('Success: Owner added successfully!');
                 closeModal('addOwnerModal');
                 addOwnerForm.reset();
                 loadPatients();

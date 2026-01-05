@@ -149,7 +149,7 @@ async function loadPetsOverview() {
                             <i class="fa-solid fa-${pet.jenis_hewan === 'Kucing' ? 'cat' : pet.jenis_hewan === 'Anjing' ? 'dog' : 'paw'}" style="font-size:1.5rem;"></i>
                         </div>
                         <div style="flex:1;">
-                            <h4 style="margin:0; color:white;">${pet.nama_hewan}</h4>
+                            <h4 style="margin:0; color:var(--text-color);">${pet.nama_hewan}</h4>
                             <p style="margin:0; color:#94a3b8; font-size:0.9rem;">${pet.jenis_hewan} ${pet.ras ? '• ' + pet.ras : ''}</p>
                         </div>
                     </div>
@@ -279,7 +279,7 @@ async function loadMyPets() {
                             <i class="fa-solid fa-${pet.jenis_hewan === 'Kucing' ? 'cat' : pet.jenis_hewan === 'Anjing' ? 'dog' : 'paw'}" style="font-size:2.5rem;"></i>
                         </div>
                     </div>
-                    <h3 style="text-align:center; margin:0.5rem 0; color:white;">${pet.nama_hewan}</h3>
+                    <h3 style="text-align:center; margin:0.5rem 0; color:var(--text-color);">${pet.nama_hewan}</h3>
                     <p style="text-align:center; color:#94a3b8; margin:0.25rem 0;">${pet.jenis_hewan} ${pet.ras ? '• ' + pet.ras : ''}</p>
                     <div style="margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.1);">
                         <p style="margin:0.25rem 0; color:#94a3b8; font-size:0.9rem;">

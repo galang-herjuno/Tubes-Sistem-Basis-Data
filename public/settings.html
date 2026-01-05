@@ -75,9 +75,22 @@
                     </form>
                 </div>
 
-                <!-- Danger Zone (Admin Only?) Not really, maybe for everyone to self-delete? No, dangerous. Left minimal. -->
+                <!-- Danger Zone -->
+                <div class="card" style="border: 1px solid #ef4444; margin-top: 2rem;">
+                    <div class="card-header" style="border-bottom: 1px solid rgba(239, 68, 68, 0.2);">
+                        <h3 style="color: #ef4444;">Danger Zone</h3>
+                    </div>
+                    <div style="padding: 1.5rem;">
+                        <p style="color: #64748b; margin-bottom: 1rem;">
+                            Once you delete your account, there is no going back. Please be certain.
+                        </p>
+                        <button type="button" id="btn-delete-account-secure"
+                            style="background-color: #fee2e2; color: #ef4444; border: 1px solid #ef4444; padding: 0.8rem 1.5rem; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                            <i class="fa-solid fa-trash-can"></i> Delete My Account
+                        </button>
+                    </div>
+                </div>
             </div>
-        </div>
     </main>
 
     <script src="js/utils.js"></script>

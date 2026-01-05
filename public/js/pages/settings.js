@@ -48,3 +48,38 @@ if (changePasswordForm) {
         }
     });
 }
+
+// Secure Delete Account Logic
+const deleteSecureBtn = document.getElementById('btn-delete-account-secure');
+if (deleteSecureBtn) {
+    deleteSecureBtn.addEventListener('click', async () => {
+        if (!confirm('Are you absolutely sure you want to delete your account? This action cannot be undone.')) {
+            return;
+        }
+
+        const password = prompt('Please enter your password to confirm deletion:');
+        if (!password) {
+            return; // User cancelled or entered empty
+        }
+
+        try {
+            const res = await fetch('/api/users/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: password })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                alert(data.message);
+                window.location.href = '/login';
+            } else {
+                alert('Account deletion failed: ' + data.message);
+            }
+        } catch (err) {
+            console.error('Delete error:', err);
+            alert('An error occurred while deleting the account');
+        }
+    });
+}
