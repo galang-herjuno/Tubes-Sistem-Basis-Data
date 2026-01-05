@@ -599,8 +599,8 @@ app.get('/api/owners', authMiddleware, async (req, res) => {
         const search = req.query.search || '';
         const offset = (page - 1) * limit;
 
-        // 1. Fetch Owners First (Avoiding massive LEFT JOIN)
-        let ownerQuery = 'SELECT * FROM pemilik';
+        // 1. Fetch Owners First (Avoiding massive LEFT JOIN & SELECT *)
+        let ownerQuery = 'SELECT id_pemilik, id_user, nama_pemilik, alamat, no_hp, email FROM pemilik';
         let countQuery = 'SELECT COUNT(*) as total FROM pemilik';
         let queryParams = [];
         let countParams = [];
@@ -766,7 +766,8 @@ app.get('/api/pets', authMiddleware, async (req, res) => {
         const totalPages = Math.ceil(totalRecords / limit);
 
         const query = `
-            SELECT h.*, p.nama_pemilik 
+            SELECT h.id_hewan, h.id_pemilik, h.nama_hewan, h.jenis_hewan, h.ras, h.gender, h.tgl_lahir, h.berat, 
+                   p.nama_pemilik 
             FROM hewan h 
             JOIN pemilik p ON h.id_pemilik = p.id_pemilik 
             ORDER BY h.id_hewan DESC
