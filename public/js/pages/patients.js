@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 let currentPatientPage = 1;
-window.totalPatientPages = 1; // Defined on window to avoid scope issues
+window.totalPatientPages = 1;
 
 async function loadPatients() {
     const searchInput = document.getElementById('owner-search-input');
@@ -43,7 +43,7 @@ async function loadPatients() {
                 }
             }
 
-            // Update Pagination Controls
+
             const prevBtn = document.getElementById('prev-btn');
             const nextBtn = document.getElementById('next-btn');
             const pageInfo = document.getElementById('page-info');
@@ -83,7 +83,7 @@ async function viewOwnerDetails(id) {
         if (res.ok) {
             const owner = await res.json();
 
-            // Get pets
+
             const petRes = await fetch(`/api/owners/${id}/pets`);
             const pets = await petRes.json();
 
@@ -131,7 +131,7 @@ async function viewOwnerDetails(id) {
                 ${petsHtml}
             `;
 
-            // Set ID for adding new pet
+
             document.getElementById('pet-owner-id').value = id;
 
             openModal('ownerDetailsModal');
@@ -142,7 +142,7 @@ async function viewOwnerDetails(id) {
     }
 }
 
-// Add Owner Form
+
 const addOwnerForm = document.getElementById('addOwnerForm');
 if (addOwnerForm) {
     addOwnerForm.addEventListener('submit', async (e) => {
@@ -181,7 +181,7 @@ if (addOwnerForm) {
 }
 
 
-// Add Pet Form
+
 const addPetForm = document.getElementById('addPetForm');
 if (addPetForm) {
     addPetForm.addEventListener('submit', async (e) => {

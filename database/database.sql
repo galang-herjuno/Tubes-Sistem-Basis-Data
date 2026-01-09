@@ -1,28 +1,11 @@
--- ==========================================
--- PAW WHISKER CLINIC MANAGEMENT SYSTEM
--- Database Schema Definition
--- ==========================================
--- Last Updated: 2026-01-02
--- 
--- CHANGELOG:
--- - 2026-01-02: Added 'Pelanggan' role to users table
--- - Initial schema includes complete clinic management structure
---
--- STRUCTURE OVERVIEW:
--- 1. Master Data: users, pemilik, hewan, pegawai, layanan, barang
--- 2. Operations: pendaftaran, rekam_medis, resep_obat
--- 3. Transactions: transaksi, detail_transaksi
--- ==========================================
+
 
 CREATE DATABASE IF NOT EXISTS Paw_Whisker;
 USE Paw_Whisker;
 
--- ==========================================
--- A. MASTER DATA (Data Induk)
--- ==========================================
 
--- 2. Tabel Users (Akun Login)
--- Updated: 2026-01-02 - Added 'Pelanggan' role for public registration
+
+
 CREATE TABLE users (
     id_user INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -31,8 +14,7 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Tabel Pemilik (Owner Hewan)
--- Updated: 2026-01-02 - Added id_user to link with customer accounts
+
 CREATE TABLE pemilik (
     id_pemilik INT AUTO_INCREMENT PRIMARY KEY,
     id_user INT UNIQUE, -- Link to users table (for Pelanggan role)
@@ -89,9 +71,7 @@ CREATE TABLE barang (
     is_active TINYINT(1) DEFAULT 1
 );
 
--- ==========================================
--- B. OPERASIONAL (Kegiatan Klinik)
--- ==========================================
+
 
 -- 8. Tabel Pendaftaran (Jadwal/Appointment)
 CREATE TABLE pendaftaran (
@@ -127,9 +107,7 @@ CREATE TABLE resep_obat (
     FOREIGN KEY (id_barang) REFERENCES barang(id_barang) ON DELETE RESTRICT
 );
 
--- ==========================================
--- C. TRANSAKSI (Keuangan)
--- ==========================================
+
 
 -- 11. Tabel Transaksi (Header Nota)
 CREATE TABLE transaksi (
@@ -162,9 +140,7 @@ CREATE TABLE detail_transaksi (
     FOREIGN KEY (id_barang) REFERENCES barang(id_barang)
 );
 
--- ==========================================
--- D. PERFORMANCE INDEXES
--- ==========================================
+
 CREATE INDEX idx_pendaftaran_tgl ON pendaftaran(tgl_kunjungan);
 CREATE INDEX idx_pendaftaran_status ON pendaftaran(status);
 CREATE INDEX idx_transaksi_tgl ON transaksi(tgl_transaksi);
@@ -174,10 +150,3 @@ CREATE INDEX idx_hewan_nama ON hewan(nama_hewan);
 CREATE INDEX idx_pegawai_jabatan ON pegawai(jabatan);
 CREATE INDEX idx_pendaftaran_filter ON pendaftaran(status, tgl_kunjungan);
 
--- ==========================================
--- END OF SCHEMA DEFINITION
--- ==========================================
--- 
--- To populate with sample data, run: node seed.js
--- 
--- ==========================================

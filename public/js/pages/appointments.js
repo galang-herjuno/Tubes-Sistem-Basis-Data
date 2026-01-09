@@ -105,7 +105,7 @@ async function selectAppointmentOwner(owner) {
 async function loadAppointmentFormData() {
     initOwnerSearch();
 
-    // 1. Populate Services (Fetch from API)
+
     const serviceSelect = document.getElementById('apt-service');
 
     if (serviceSelect) {
@@ -137,7 +137,6 @@ async function loadAppointmentFormData() {
         };
     }
 
-    // 2. Initial Staff Load
     await loadStaffForDropdown();
 };
 

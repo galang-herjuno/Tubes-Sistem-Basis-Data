@@ -49,7 +49,7 @@ if (changePasswordForm) {
     });
 }
 
-// Secure Delete Account Logic
+
 const deleteSecureBtn = document.getElementById('btn-delete-account-secure');
 if (deleteSecureBtn) {
     deleteSecureBtn.addEventListener('click', async () => {

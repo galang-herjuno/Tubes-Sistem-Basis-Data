@@ -1,16 +1,14 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // Set Date
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', options);
 
-    // Load user info
     try {
         const userRes = await fetch('/api/me');
         if (userRes.ok) {
             const user = await userRes.json();
             document.getElementById('user-name').textContent = user.username;
 
-            // Redirect if not customer
+
             if (user.role !== 'Pelanggan') {
                 window.location.href = '/dashboard';
                 return;
@@ -20,10 +18,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // Initialize profile (auto-create if not exists)
         await fetch('/api/customer/profile');
 
-        // Load initial data
         loadDashboard();
         setupNavigation();
         setupProfileForm();

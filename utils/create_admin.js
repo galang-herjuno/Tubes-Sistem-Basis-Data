@@ -19,7 +19,6 @@ async function createAdmin() {
         const [users] = await connection.query('SELECT * FROM users WHERE username = ?', ['admin']);
 
         if (users.length === 0) {
-            console.log('Creating admin user...');
             const hashedPassword = await bcrypt.hash('admin123', 10);
             await connection.query(
                 "INSERT INTO users (username, password, role) VALUES (?, ?, 'Admin')",

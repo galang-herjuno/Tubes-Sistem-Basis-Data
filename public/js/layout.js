@@ -3,25 +3,24 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Inject Sidebar and Header if container exists
     injectLayout();
 
-    // 2. Fetch User Info
+
     try {
         const res = await fetch('/api/me');
         if (res.ok) {
             const user = await res.json();
 
-            // Update Sidebar User Info
+
             const nameEl = document.getElementById('user-name');
             const roleEl = document.getElementById('user-role');
             if (nameEl) nameEl.textContent = user.username;
             if (roleEl) roleEl.textContent = user.role;
 
-            // Global role access
+
             window.currentUserRole = user.role;
 
-            // Update UI Access
+
             updateUIBasedOnRole(user.role);
 
             // Set active menu item based on current URL
@@ -31,14 +30,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Layout init error:', err);
     }
 
-    // 3. Set Date
     const dateEl = document.getElementById('current-date');
     if (dateEl) {
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         dateEl.textContent = new Date().toLocaleDateString('en-US', options);
     }
 
-    // 4. Notification Check (Receptionist)
     setTimeout(checkBillNotifications, 2000); // Check after render
 });
 

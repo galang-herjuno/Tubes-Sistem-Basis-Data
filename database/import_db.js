@@ -29,20 +29,14 @@ async function importDatabase() {
             return;
         }
 
-        // Try to detect a USE statement in the SQL file so we can switch DB if env not provided
-        const useMatch = sqlContent.match(/USE\s+`?([A-Za-z0-9_]+)`?;/i);
-        const detectedDb = useMatch ? useMatch[1] : null;
 
-        console.log('Executing SQL script...');
         // Execute the entire script
-        // Note: mysql2 support multiple statements if configured
         await connection.query(sqlContent);
 
         console.log('Database imported successfully from database.sql');
 
-        // Add a test user if one doesn't exist (because the SQL file creates tables but maybe not data)
         // Switch to the configured database name or the one detected in the SQL file
-        const targetDb = process.env.DB_NAME || detectedDb;
+        const targetDb = process.env.DB_NAME;
         if (targetDb) {
             await connection.changeUser({ database: targetDb });
         } else {

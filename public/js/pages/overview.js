@@ -7,9 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 let queueTab = 'active';
 let queuePage = 1;
 
-// ==========================================
-// STATS & CHART
-// ==========================================
+
 
 async function loadDashboardStats() {
     try {
@@ -85,9 +83,7 @@ async function loadSalesChart() {
 }
 
 
-// ==========================================
-// LIVE QUEUE LOGIC
-// ==========================================
+
 
 window.setQueueTab = (tab) => {
     queueTab = tab;
@@ -200,15 +196,11 @@ async function loadQueueData(reset = true) {
     }
 }
 
-// ==========================================
-// BILL GENERATION
-// ==========================================
+
 
 window.currentBillId = null;
 
-// ==========================================
-// BILL GENERATION & DISCOUNT LOGIC
-// ==========================================
+
 
 window.currentBillId = null;
 window.billOriginalTotal = 0;

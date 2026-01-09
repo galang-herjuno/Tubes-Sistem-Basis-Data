@@ -4,7 +4,6 @@ const session = require('express-session');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
-// Attempt to require db, if it fails due to connection refuse on immediate test, we handle it in route
 let db;
 try {
     db = require('./config/db');
@@ -12,7 +11,6 @@ try {
     console.error("Database module error:", error);
 }
 
-// Fail fast if DB module isn't available - most routes require DB.
 if (!db) {
     console.error('Database module not available. Exiting to avoid runtime errors in routes.');
     process.exit(1);
@@ -32,8 +30,8 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false, // Set to true if using HTTPS
-        maxAge: 1000 * 60 * 60 * 24 // 1 day
+        secure: false,
+        maxAge: 1000 * 60 * 60 * 24
     }
 }));
 
@@ -49,7 +47,6 @@ const authMiddleware = (req, res, next) => {
 const authorizeRole = (...allowedRoles) => {
     return (req, res, next) => {
         if (!req.session.role || !allowedRoles.includes(req.session.role)) {
-            // 403 Forbidden Page
             return res.status(403).send(`
                 <!DOCTYPE html>
                 <html lang="en">
@@ -109,10 +106,7 @@ app.get('/transactions', authMiddleware, authorizeRole('Admin', 'Resepsionis'), 
 });
 
 app.get('/settings', authMiddleware, (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/settings.html')); // User needs settings.html? or reusing dashboard for now?
-    // Plan said: split dashboard.html. We haven't made settings.html yet.
-    // Let's stick to dashboard for settings or make a quick settings.html
-    // res.sendFile(path.join(__dirname, '../public/dashboard.html')); // Placeholder if settings.html is not verified
+    res.sendFile(path.join(__dirname, '../public/settings.html'));
 });
 
 // Serve Login Page
@@ -129,7 +123,6 @@ app.get('/dashboard', async (req, res) => {
         return res.redirect('/login');
     }
 
-    // Check user role and redirect to appropriate dashboard
     try {
         const [rows] = await db.query('SELECT role FROM users WHERE id_user = ?', [req.session.userId]);
         if (rows.length > 0 && rows[0].role === 'Pelanggan') {
@@ -159,7 +152,6 @@ app.post('/api/login', async (req, res) => {
     }
 
     try {
-        // Query user
         const [rows] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
 
         if (rows.length === 0) {
@@ -168,14 +160,12 @@ app.post('/api/login', async (req, res) => {
 
         const user = rows[0];
 
-        // Compare password
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid username or password' });
         }
 
-        // Create session
         req.session.userId = user.id_user;
         req.session.username = user.username;
         req.session.role = user.role;
@@ -214,25 +204,21 @@ app.post('/api/register', async (req, res) => {
     try {
         await connection.beginTransaction();
 
-        // Check if user exists
         const [existing] = await connection.query('SELECT * FROM users WHERE username = ?', [username]);
         if (existing.length > 0) {
             await connection.rollback();
             return res.status(400).json({ message: 'Username already exists' });
         }
 
-        // Check if email exists
         const [existingEmail] = await connection.query('SELECT * FROM pemilik WHERE email = ?', [email]);
         if (existingEmail.length > 0) {
             await connection.rollback();
             return res.status(400).json({ message: 'Email already registered' });
         }
 
-        // Hash password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Create user account
         const [userResult] = await connection.query(
             'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
             [username, hashedPassword, role]
@@ -240,7 +226,6 @@ app.post('/api/register', async (req, res) => {
 
         const userId = userResult.insertId;
 
-        // Create pemilik profile linked to user
         await connection.query(
             'INSERT INTO pemilik (id_user, nama_pemilik, email, no_hp, alamat) VALUES (?, ?, ?, ?, ?)',
             [userId, fullname, email, phone, address || null]
@@ -273,13 +258,11 @@ app.post('/api/users/change-password', authMiddleware, async (req, res) => {
         }
         const user = rows[0];
 
-        // Verify old password
         const isMatch = await bcrypt.compare(oldPassword, user.password);
         if (!isMatch) {
             return res.status(401).json({ message: 'Incorrect old password' });
         }
 
-        // Hash new password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
@@ -293,12 +276,10 @@ app.post('/api/users/change-password', authMiddleware, async (req, res) => {
 });
 
 // Delete User (Admin Only)
-// Delete User (Admin Only - Target ID)
 app.delete('/api/users/:id', authMiddleware, authorizeRole('Admin'), async (req, res) => {
     const targetUserId = req.params.id;
     const requesterId = req.session.userId;
 
-    // Prevent Admin from deleting themselves via this endpoint (use self-delete instead)
     if (parseInt(targetUserId) === requesterId) {
         return res.status(400).json({ message: 'To delete your own account, use the self-delete feature in Settings.' });
     }
@@ -322,7 +303,6 @@ app.post('/api/users/delete', authMiddleware, async (req, res) => {
     }
 
     try {
-        // Verify password first
         const [rows] = await db.query('SELECT password FROM users WHERE id_user = ?', [userId]);
         if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
 
@@ -334,7 +314,6 @@ app.post('/api/users/delete', authMiddleware, async (req, res) => {
         // Proceed to delete
         await db.query('DELETE FROM users WHERE id_user = ?', [userId]);
 
-        // Destroy session
         req.session.destroy(err => {
             if (err) console.error('Session destroy error:', err);
             res.clearCookie('connect.sid');
@@ -351,12 +330,10 @@ app.put('/api/users/:id/role', authMiddleware, async (req, res) => {
     const { role } = req.body;
     const targetUserId = req.params.id;
 
-    // Verify requester is Admin (Middleware checks login, but we need role check)
     if (req.session.role !== 'Admin') {
         return res.status(403).json({ message: 'Access denied: Admin only' });
     }
 
-    // Validate role
     const validRoles = ['Admin', 'Dokter', 'Resepsionis', 'Pelanggan'];
     if (!validRoles.includes(role)) {
         return res.status(400).json({ message: 'Invalid role' });
@@ -387,7 +364,6 @@ app.get('/api/owners/:id/pets', authMiddleware, async (req, res) => {
 // Get Doctors List
 app.get('/api/doctors', authMiddleware, async (req, res) => {
     try {
-        // Fetch employees with 'Dokter Hewan' or 'Groomer' jabatan
         const [rows] = await db.query("SELECT * FROM pegawai WHERE jabatan IN ('Dokter Hewan', 'Groomer')");
         res.json(rows);
     } catch (err) {
@@ -405,7 +381,6 @@ app.post('/api/appointments', authMiddleware, async (req, res) => {
     }
 
     try {
-        // Status default 'Menunggu'
         await db.query(`
             INSERT INTO pendaftaran (id_hewan, id_pegawai, tgl_kunjungan, keluhan_awal, status) 
             VALUES (?, ?, ?, ?, 'Menunggu')
@@ -440,8 +415,6 @@ app.get('/api/appointments', authMiddleware, async (req, res) => {
 
 // --- DASHBOARD API ENDPOINTS ---
 
-
-
 // Get Current User Info
 app.get('/api/me', authMiddleware, (req, res) => {
     res.json({
@@ -455,7 +428,6 @@ app.get('/api/dashboard/stats', authMiddleware, async (req, res) => {
     try {
         const [totalPatients] = await db.query('SELECT COUNT(*) as count FROM hewan');
         const [lowStock] = await db.query('SELECT COUNT(*) as count FROM barang WHERE stok < 5');
-        // Optimized SARGable query for revenue (Index-friendly)
         const [revenue] = await db.query('SELECT COALESCE(SUM(total_biaya), 0) as total FROM transaksi WHERE tgl_transaksi >= CURRENT_DATE AND tgl_transaksi < CURRENT_DATE + INTERVAL 1 DAY');
         const [activeStaff] = await db.query('SELECT COUNT(*) as count FROM pegawai WHERE id_user IS NOT NULL');
 
@@ -479,7 +451,7 @@ app.get('/api/dashboard/queue', authMiddleware, async (req, res) => {
 
         // Query Params
         const dateFilter = req.query.date || 'today';
-        const statusFilter = req.query.status || 'all'; // 'active', 'completed', 'all'
+        const statusFilter = req.query.status || 'all';
         const limit = parseInt(req.query.limit) || 10;
         const offset = parseInt(req.query.offset) || 0;
 
@@ -501,7 +473,6 @@ app.get('/api/dashboard/queue', authMiddleware, async (req, res) => {
         const params = [];
 
         // Date Filter
-        // Date Filter (Optimized for Index Usage)
         if (dateFilter === 'today') {
             query += ` AND p.tgl_kunjungan >= CURRENT_DATE AND p.tgl_kunjungan < CURRENT_DATE + INTERVAL 1 DAY`;
         } else if (dateFilter === 'tomorrow') {
@@ -511,7 +482,6 @@ app.get('/api/dashboard/queue', authMiddleware, async (req, res) => {
         } else if (dateFilter === 'month') {
             query += ` AND MONTH(p.tgl_kunjungan) = MONTH(CURRENT_DATE) AND YEAR(p.tgl_kunjungan) = YEAR(CURRENT_DATE)`;
         } else if (dateFilter === 'all') {
-            // No date filter
         }
 
         // Status Filter
@@ -527,9 +497,8 @@ app.get('/api/dashboard/queue', authMiddleware, async (req, res) => {
             params.push(userId);
         }
 
-        // Sort priority: 
-        // 1. Unpaid first (t.id_transaksi IS NULL) -> DESC because true(1) > false(0)
-        // 2. Then by appointment time
+
+
         query += ` ORDER BY (t.id_transaksi IS NULL) DESC, p.tgl_kunjungan ASC LIMIT ? OFFSET ?`;
         params.push(limit, offset);
 
@@ -624,7 +593,6 @@ app.get('/api/owners/:id', authMiddleware, async (req, res) => {
 });
 
 // Get All Owners (with Pet count)
-// Get All Owners (Optimized: Divide & Conquer Strategy)
 app.get('/api/owners', authMiddleware, async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -632,14 +600,14 @@ app.get('/api/owners', authMiddleware, async (req, res) => {
         const search = req.query.search || '';
         const offset = (page - 1) * limit;
 
-        // 1. Fetch Owners First (Avoiding massive LEFT JOIN & SELECT *)
+
+
         let ownerQuery = 'SELECT p.id_pemilik, p.id_user, p.nama_pemilik, p.alamat, p.no_hp, p.email, u.created_at FROM pemilik p LEFT JOIN users u ON p.id_user = u.id_user';
         let countQuery = 'SELECT COUNT(*) as total FROM pemilik p';
         let queryParams = [];
         let countParams = [];
 
         if (search) {
-            // Optimized Search: Prefix match only for Index usage
             const searchClause = ' WHERE p.nama_pemilik LIKE ?';
             ownerQuery += searchClause;
             countQuery += searchClause;
@@ -651,12 +619,10 @@ app.get('/api/owners', authMiddleware, async (req, res) => {
         ownerQuery += ' ORDER BY p.id_pemilik DESC LIMIT ? OFFSET ?';
         queryParams.push(limit, offset);
 
-        // Get Total Count (Cheap count on single table)
         const [countResult] = await db.query(countQuery, countParams);
         const totalRecords = countResult[0].total;
         const totalPages = Math.ceil(totalRecords / limit);
 
-        // Fetch Paginated Owners
         const [owners] = await db.query(ownerQuery, queryParams);
 
         if (owners.length === 0) {
@@ -666,7 +632,6 @@ app.get('/api/owners', authMiddleware, async (req, res) => {
             });
         }
 
-        // 2. Fetch Pet Counts for these specific owners (IN clause)
         const ownerIds = owners.map(o => o.id_pemilik);
         const [petCounts] = await db.query(`
             SELECT id_pemilik, COUNT(*) as count 
@@ -675,7 +640,6 @@ app.get('/api/owners', authMiddleware, async (req, res) => {
             GROUP BY id_pemilik
         `, [ownerIds]);
 
-        // 3. Map Counts to Owners
         const mappedOwners = owners.map(o => {
             const countData = petCounts.find(c => c.id_pemilik === o.id_pemilik);
             return { ...o, pet_count: countData ? countData.count : 0 };
@@ -708,36 +672,29 @@ app.post('/api/owners', authMiddleware, async (req, res) => {
     try {
         await connection.beginTransaction();
 
-        // Generate username from name (lowercase, replace spaces with dots)
         let username = nama_pemilik.toLowerCase().replace(/\s+/g, '.');
 
-        // Check if username exists, if so add number suffix
         const [existing] = await connection.query('SELECT * FROM users WHERE username = ?', [username]);
         if (existing.length > 0) {
-            // Add timestamp suffix to make it unique
             username = `${username}.${Date.now().toString().slice(-4)}`;
         }
 
-        // Check if email already exists
         const [existingEmail] = await connection.query('SELECT * FROM pemilik WHERE email = ?', [email]);
         if (existingEmail.length > 0) {
             await connection.rollback();
             return res.status(400).json({ message: 'Email already registered' });
         }
 
-        // Generate default password
         const defaultPassword = 'owner123';
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(defaultPassword, salt);
 
-        // Create user account
         const [userResult] = await connection.query(
             'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
             [username, hashedPassword, 'Pelanggan']
         );
         const userId = userResult.insertId;
 
-        // Create pemilik record linked to user
         const [ownerResult] = await connection.query(
             'INSERT INTO pemilik (id_user, nama_pemilik, no_hp, alamat, email) VALUES (?, ?, ?, ?, ?)',
             [userId, nama_pemilik, no_hp, alamat, email]
@@ -793,7 +750,6 @@ app.get('/api/pets', authMiddleware, async (req, res) => {
         const limit = parseInt(req.query.limit) || 10;
         const offset = (page - 1) * limit;
 
-        // Get Total Count
         const [countResult] = await db.query('SELECT COUNT(*) as total FROM hewan');
         const totalRecords = countResult[0].total;
         const totalPages = Math.ceil(totalRecords / limit);

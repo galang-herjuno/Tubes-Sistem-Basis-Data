@@ -59,7 +59,7 @@ function toggleSpesialisasi(val) {
     }
 }
 
-// Add Staff
+
 const addStaffForm = document.getElementById('addStaffForm');
 if (addStaffForm) {
     addStaffForm.addEventListener('submit', async (e) => {
@@ -98,7 +98,7 @@ if (addStaffForm) {
     });
 }
 
-// Edit Staff
+
 async function openEditStaff(id) {
     try {
         const res = await fetch(`/api/staff/${id}`);
@@ -178,7 +178,7 @@ async function deleteStaff(id) {
     }
 }
 
-// Make functions globally available
+
 window.openEditStaff = openEditStaff;
 window.deleteStaff = deleteStaff;
 window.toggleSpesialisasi = toggleSpesialisasi;

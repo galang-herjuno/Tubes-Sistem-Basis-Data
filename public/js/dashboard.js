@@ -1,8 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
     let currentUsername = '';
-    window.currentUserRole = ''; // Store globally for access
-
-    // 1. Fetch User Info & Stats
+    window.currentUserRole = '';
     try {
         const userRes = await fetch('/api/me');
         if (userRes.ok) {
@@ -12,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (userNameEl) userNameEl.textContent = user.username;
             if (userRoleEl) userRoleEl.textContent = user.role;
 
-            // Store username and role globally
+
             currentUsername = user.username;
             window.currentUserRole = user.role;
             const confirmDisplay = document.getElementById('confirm-username-display');
@@ -21,10 +19,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateUIBasedOnRole(user.role);
         }
 
-        // Initial load: Dashboard
         loadDashboardStats();
 
-        // 2. Setup Navigation
         setupNavigation();
         setupSettings();
 
@@ -42,23 +38,24 @@ function formatCurrency(amount) {
 }
 
 function updateUIBasedOnRole(role) {
-    // Also manage sidebar visibility
-    const adminElements = document.querySelectorAll('.role-admin');
+
     const doctorElements = document.querySelectorAll('.role-dokter');
     const receptionElements = document.querySelectorAll('.role-resepsionis');
     const groomerElements = document.querySelectorAll('.role-groomer');
 
-    // Default: Hide all role-specific
+
+
     adminElements.forEach(el => el.style.display = 'none');
     doctorElements.forEach(el => el.style.display = 'none');
     receptionElements.forEach(el => el.style.display = 'none');
     groomerElements.forEach(el => el.style.display = 'none');
 
-    // Reset Stats Grid Visibility (Show by default)
+
+
     const statsGrid = document.querySelector('.stats-grid');
-    if (statsGrid) statsGrid.style.display = 'grid'; // Restore grid
+    if (statsGrid) statsGrid.style.display = 'grid';
     const greeting = document.getElementById('groomer-greeting');
-    if (greeting) greeting.style.display = 'none'; // Hide greeting
+    if (greeting) greeting.style.display = 'none';
 
     if (role === 'Admin') {
         adminElements.forEach(el => el.style.display = el.tagName === 'LI' ? 'block' : 'block');
@@ -67,29 +64,29 @@ function updateUIBasedOnRole(role) {
         // Hide Revenue Today for doctors
         const revenueCard = document.querySelector('.stat-card:nth-child(2)');
         if (revenueCard) revenueCard.style.display = 'none';
+
+
     } else if (role === 'Groomer') {
         groomerElements.forEach(el => el.style.display = el.tagName === 'LI' ? 'block' : 'block');
 
-        // Hide Entire Stats Grid for Groomer
         if (statsGrid) statsGrid.style.display = 'none';
 
-        // Show Greeting
         if (greeting) {
             greeting.style.display = 'block';
             const nameEl = document.getElementById('user-name');
             const displayEl = document.getElementById('groomer-name-display');
             if (nameEl && displayEl) {
-                // Use username directly if possible, or wait for profile load
-                // We use setTimeout to ensure user-name text is populated
-                setTimeout(() => {
-                    displayEl.textContent = nameEl.textContent || 'Groomer';
-                }, 100);
+                if (nameEl && displayEl) {
+                    setTimeout(() => {
+                        displayEl.textContent = nameEl.textContent || 'Groomer';
+                    }, 100);
+                }
             }
+        } else if (role === 'Resepsionis') {
+            receptionElements.forEach(el => el.style.display = el.tagName === 'LI' ? 'block' : 'block');
+        } else if (role === 'Pelanggan') {
+            // Limited view for Pelanggan
         }
-    } else if (role === 'Resepsionis') {
-        receptionElements.forEach(el => el.style.display = el.tagName === 'LI' ? 'block' : 'block');
-    } else if (role === 'Pelanggan') {
-        // Limited view for Pelanggan
     }
 }
 
@@ -97,10 +94,7 @@ function setupNavigation() {
     const links = document.querySelectorAll('.menu a');
     const sections = document.querySelectorAll('main > div.section-content');
 
-    // Helper to switch sections
     window.switchSection = (sectionId) => {
-        // Hide all sections first
-        // Note: we need to wrap dashboard content in a section too
         document.getElementById('dashboard-view').style.display = 'none';
         document.querySelectorAll('.app-section').forEach(el => el.style.display = 'none');
         links.forEach(l => l.classList.remove('active'));
@@ -144,7 +138,10 @@ function setupNavigation() {
             } else if (text.includes('Settings')) {
                 window.switchSection('settings-view');
                 link.classList.add('active');
-                loadDoctorProfile(); // Load profile data
+            } else if (text.includes('Settings')) {
+                window.switchSection('settings-view');
+                link.classList.add('active');
+                loadDoctorProfile();
             }
         });
     });
@@ -162,7 +159,7 @@ window.navigateToInventory = () => {
 };
 
 function setupSettings() {
-    // Change Password Modal Logic
+
     const openModalBtn = document.getElementById('openChangePassModalBtn');
     const closeModalBtn = document.getElementById('closePasswordModal');
     const modal = document.getElementById('passwordModal');
@@ -213,7 +210,8 @@ function setupSettings() {
         });
     }
 
-    // Delete Account
+
+
     const deleteBtn = document.getElementById('deleteAccountBtn');
     const deleteInput = document.getElementById('deleteConfirmationInput');
 
@@ -255,7 +253,6 @@ function setupSettings() {
 // PROFILE MANAGEMENT
 // ========================================
 
-// Load Doctor/Staff Profile
 async function loadDoctorProfile() {
     const res = await fetch('/api/pegawai/profile');
     if (res.ok) {
@@ -274,7 +271,6 @@ async function loadDoctorProfile() {
     }
 }
 
-// Update Doctor/Staff Profile
 window.updateDoctorProfile = async (e) => {
     e.preventDefault();
 
@@ -303,10 +299,9 @@ window.updateDoctorProfile = async (e) => {
         const result = await res.json();
         if (res.ok) {
             alert('✅ Profile updated successfully!');
-            // Update displayed name if changed
             const nameDisplay = document.getElementById('user-name');
             if (nameDisplay && data.nama_lengkap) {
-                nameDisplay.textContent = data.nama_lengkap.split(' ')[0]; // First name
+                nameDisplay.textContent = data.nama_lengkap.split(' ')[0];
             }
         } else {
             alert('❌ Error: ' + result.message);
@@ -346,13 +341,15 @@ async function loadDashboardStats() {
 // Queue State
 let queueOffset = 0;
 const queueLimit = 10;
-let queueStatus = 'active'; // 'active' or 'completed'
+
+let queueStatus = 'active';
 
 window.setQueueTab = (status) => {
     queueStatus = status;
     queueOffset = 0;
 
-    // Update Button Styles
+
+
     const btnActive = document.getElementById('tab-active');
     const btnCompleted = document.getElementById('tab-completed');
 
@@ -401,7 +398,8 @@ async function fetchQueue(append = false) {
                 return;
             }
 
-            // check if we should show load more
+
+
             if (loadMoreBtn) {
                 if (queue.length < queueLimit) {
                     // No more data to load
@@ -418,7 +416,8 @@ async function fetchQueue(append = false) {
             queue.forEach(item => {
                 const tr = document.createElement('tr');
 
-                // Generate Bill button logic
+
+
                 let billButton = '';
                 if (canGenerateBill && item.status === 'Selesai') {
                     if (item.id_transaksi) {
@@ -444,7 +443,8 @@ async function fetchQueue(append = false) {
                     }
                 }
 
-                // Show date if filter is not 'today'
+
+
                 let timeDisplay = item.jam;
                 if (dateFilter !== 'today') {
                     timeDisplay += `<br><span style="font-size:0.75rem; color:var(--text-muted);">${item.tanggal}</span>`;
@@ -585,12 +585,9 @@ async function fetchAnalytics() {
     }
 }
 
-// --- NEW SECTION LOADERS ---
-
-// Pagination State
 let currentPatientPage = 1;
 let totalPatientPages = 1;
-let searchTimeout = null; // For debounce
+let searchTimeout = null;
 
 async function loadPatients(page = 1) {
     currentPatientPage = page;
@@ -604,7 +601,8 @@ async function loadPatients(page = 1) {
         const owners = result.data;
         totalPatientPages = result.pagination.totalPages;
 
-        // Update Pagination Info
+
+
         const info = document.getElementById('page-info-patients');
         const prevBtn = document.getElementById('btn-prev-patients');
         const nextBtn = document.getElementById('btn-next-patients');
@@ -662,8 +660,8 @@ window.viewOwnerDetails = async (ownerId) => {
         const content = document.getElementById('owner-details-content');
         content.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</p>';
 
-        // Fetch owner details
-        // Fetch owner details directly
+
+
         const ownerRes = await fetch(`/api/owners/${ownerId}`);
         if (!ownerRes.ok) {
             content.innerHTML = '<p style="text-align:center; color:#ef4444;">Owner not found</p>';
@@ -672,14 +670,15 @@ window.viewOwnerDetails = async (ownerId) => {
 
         const owner = await ownerRes.json();
 
-        // Fetch owner's pets
+
+
         const petsRes = await fetch(`/api/owners/${ownerId}/pets`);
         const pets = petsRes.ok ? await petsRes.json() : [];
 
-        // Update modal title
+
+
         document.getElementById('owner-details-title').textContent = `${owner.nama_pemilik}'s Profile`;
 
-        // Build content
         content.innerHTML = `
             <!-- Owner Information Card -->
             <div style="background:rgba(139, 92, 246, 0.05); 
@@ -775,7 +774,6 @@ window.viewOwnerDetails = async (ownerId) => {
     }
 };
 
-// Helper function to calculate pet age
 function calculatePetAge(birthDate) {
     const today = new Date();
     const birth = new Date(birthDate);

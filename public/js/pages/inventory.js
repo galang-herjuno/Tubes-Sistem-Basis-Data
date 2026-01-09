@@ -44,7 +44,7 @@ async function loadInventory(page = 1) {
                 }
             }
 
-            // Pagination Controls
+
             const prevBtn = document.getElementById('prev-btn');
             const nextBtn = document.getElementById('next-btn');
             const pageInfo = document.getElementById('page-info');
@@ -76,7 +76,7 @@ window.changeInventoryPage = (delta) => {
     loadInventory(currentInventoryPage + delta);
 };
 
-// Add Item
+
 const addItemForm = document.getElementById('addItemForm');
 if (addItemForm) {
     addItemForm.addEventListener('submit', async (e) => {
@@ -120,7 +120,7 @@ function openEditItemModal(item) {
     openModal('editItemModal');
 }
 
-// Edit Item
+
 const editItemForm = document.getElementById('editItemForm');
 if (editItemForm) {
     editItemForm.addEventListener('submit', async (e) => {

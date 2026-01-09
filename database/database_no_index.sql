@@ -1,15 +1,10 @@
--- ==========================================
--- PAW WHISKER CLINIC MANAGEMENT SYSTEM
--- Database Schema Definition (NO INDEX VERSION)
--- ==========================================
+
 
 DROP DATABASE IF EXISTS Paw_Whisker;
 CREATE DATABASE Paw_Whisker;
 USE Paw_Whisker;
 
--- ==========================================
--- A. MASTER DATA (Data Induk)
--- ==========================================
+
 
 -- 2. Tabel Users (Akun Login)
 CREATE TABLE users (
@@ -77,9 +72,7 @@ CREATE TABLE barang (
     is_active TINYINT(1) DEFAULT 1
 );
 
--- ==========================================
--- B. OPERASIONAL (Kegiatan Klinik)
--- ==========================================
+
 
 -- 8. Tabel Pendaftaran (Jadwal/Appointment)
 CREATE TABLE pendaftaran (
@@ -115,9 +108,7 @@ CREATE TABLE resep_obat (
     FOREIGN KEY (id_barang) REFERENCES barang(id_barang) ON DELETE RESTRICT
 );
 
--- ==========================================
--- C. TRANSAKSI (Keuangan)
--- ==========================================
+
 
 -- 11. Tabel Transaksi (Header Nota)
 CREATE TABLE transaksi (
@@ -149,6 +140,4 @@ CREATE TABLE detail_transaksi (
     FOREIGN KEY (id_barang) REFERENCES barang(id_barang)
 );
 
--- ==========================================
--- NO INDEXES HERE AS REQUESTED
--- ==========================================
+
